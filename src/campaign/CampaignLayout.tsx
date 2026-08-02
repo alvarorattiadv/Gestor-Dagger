@@ -1,11 +1,17 @@
-import { useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useCampaignStore } from './store';
 import { useRoleStore } from './role';
-import { downloadCampaignJson, parseCampaignJson } from './io';
+import { downloadCampaignJson } from './io';
 import { SmallButton } from './components/SmallButton';
 import { RoleGate } from './components/RoleGate';
+
+const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
+
+function formatSyncTime(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
 
 const TABS = [
   { to: '/campanha', label: 'Mapa Mundi', end: true },
@@ -20,28 +26,27 @@ const TABS = [
 
 export function CampaignLayout() {
   const campaign = useCampaignStore((s) => s.campaign);
-  const importedFileName = useCampaignStore((s) => s.importedFileName);
+  const loading = useCampaignStore((s) => s.loading);
+  const lastSyncedAt = useCampaignStore((s) => s.lastSyncedAt);
+  const loadFromSupabase = useCampaignStore((s) => s.loadFromSupabase);
   const setCampaignName = useCampaignStore((s) => s.setCampaignName);
-  const importCampaign = useCampaignStore((s) => s.importCampaign);
   const role = useRoleStore((s) => s.role);
   const profile = useRoleStore((s) => s.profile);
   const signOut = useRoleStore((s) => s.signOut);
   const [editingName, setEditingName] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  async function handleFileSelected(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const data = parseCampaignJson(text);
-      if (confirm('Importar substituirá todos os dados atuais da campanha. Continuar?')) {
-        importCampaign(data, file.name);
-      }
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Falha ao importar o arquivo.');
-    }
+  useEffect(() => {
+    loadFromSupabase();
+    const interval = setInterval(loadFromSupabase, AUTO_SYNC_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [loadFromSupabase]);
+
+  if (loading && !lastSyncedAt) {
+    return (
+      <div className="min-h-screen bg-[#f4efe6] flex items-center justify-center">
+        <p className="text-sm text-stone-500">Carregando campanha...</p>
+      </div>
+    );
   }
 
   return (
@@ -81,14 +86,13 @@ export function CampaignLayout() {
                   </h1>
                 )}
               </div>
-              {importedFileName && (
-                <p className="text-xs italic text-stone-400 mt-0.5 truncate">Arquivo: {importedFileName}</p>
+              {lastSyncedAt && (
+                <p className="text-xs italic text-stone-400 mt-0.5 truncate">Sincronizado às {formatSyncTime(lastSyncedAt)}</p>
               )}
             </div>
             <div className="flex gap-2 shrink-0">
-              <input ref={fileInputRef} type="file" accept="application/json" className="hidden" onChange={handleFileSelected} />
-              <SmallButton variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                Importar
+              <SmallButton variant="secondary" onClick={() => loadFromSupabase()} disabled={loading}>
+                {loading ? 'Sincronizando...' : 'Sincronizar'}
               </SmallButton>
               <SmallButton variant="secondary" onClick={() => downloadCampaignJson(campaign)}>
                 Exportar backup
