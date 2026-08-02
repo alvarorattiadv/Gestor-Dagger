@@ -1,7 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
-import { Home } from './pages/Home';
-import { CreateCharacter } from './pages/CreateCharacter';
-import { CharacterSheet } from './pages/CharacterSheet';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { CampaignLayout } from './campaign/CampaignLayout';
 import { CampaignHome } from './campaign/pages/CampaignHome';
 import { CityList } from './campaign/pages/CityList';
@@ -16,9 +13,9 @@ import { Party } from './campaign/pages/Party';
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/criar" element={<CreateCharacter />} />
-      <Route path="/personagem/:id" element={<CharacterSheet />} />
+      <Route path="/" element={<Navigate to="/campanha" replace />} />
+      <Route path="/criar" element={<Navigate to="/campanha" replace />} />
+      <Route path="/personagem/:id" element={<Navigate to="/campanha" replace />} />
 
       <Route path="/campanha" element={<CampaignLayout />}>
         <Route index element={<CampaignHome />} />

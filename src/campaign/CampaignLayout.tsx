@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useCampaignStore } from './store';
 import { useRoleStore } from './role';
 import { downloadCampaignJson, parseCampaignJson } from './io';
@@ -49,9 +49,6 @@ export function CampaignLayout() {
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-3 min-w-0">
-              <Link to="/" className="text-xs text-stone-500 hover:underline shrink-0">
-                ← Fichas
-              </Link>
               <span
                 className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                   role === 'gm' ? 'bg-violet-100 text-violet-800' : 'bg-stone-100 text-stone-600'
