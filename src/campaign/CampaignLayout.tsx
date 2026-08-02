@@ -24,7 +24,8 @@ export function CampaignLayout() {
   const setCampaignName = useCampaignStore((s) => s.setCampaignName);
   const importCampaign = useCampaignStore((s) => s.importCampaign);
   const role = useRoleStore((s) => s.role);
-  const setRole = useRoleStore((s) => s.setRole);
+  const profile = useRoleStore((s) => s.profile);
+  const signOut = useRoleStore((s) => s.signOut);
   const [editingName, setEditingName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +58,7 @@ export function CampaignLayout() {
                   }`}
                 >
                   {role === 'gm' ? 'Mestre' : 'Jogador'}
+                  {profile?.display_name ? ` · ${profile.display_name}` : ''}
                 </span>
                 {editingName ? (
                   <input
@@ -91,8 +93,8 @@ export function CampaignLayout() {
               <SmallButton variant="secondary" onClick={() => downloadCampaignJson(campaign)}>
                 Exportar backup
               </SmallButton>
-              <SmallButton variant="secondary" onClick={() => setRole(null)}>
-                Trocar papel
+              <SmallButton variant="secondary" onClick={() => signOut()}>
+                Sair
               </SmallButton>
             </div>
           </div>

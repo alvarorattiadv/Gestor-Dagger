@@ -1,6 +1,7 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
+import { PendingApprovals } from '../components/PendingApprovals';
 
 export function Party() {
   const party = useCampaignStore((s) => s.campaign.party);
@@ -17,6 +18,8 @@ export function Party() {
         <h2 className="text-lg font-bold text-stone-900">Grupo & Recursos</h2>
         <p className="text-sm text-stone-500">Acompanhe Esperança e Medo entre sessões, e mantenha uma referência rápida do grupo.</p>
       </div>
+
+      {isGM && <PendingApprovals />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <ResourceCounter label="Esperança do grupo" value={party.hope} onChange={setHope} dotClass="bg-amber-400" />
