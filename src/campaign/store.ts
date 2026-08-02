@@ -27,6 +27,7 @@ function normalizeCampaign(campaign: Campaign): Campaign {
 
 interface CampaignStoreState {
   campaign: Campaign;
+  importedFileName: string | null;
 
   setCampaignName: (name: string) => void;
   updateWorldMap: (updater: (map: MapData) => MapData) => void;
@@ -67,7 +68,7 @@ interface CampaignStoreState {
   updateArtifact: (id: string, updater: (a: Artifact) => Artifact) => void;
   removeArtifact: (id: string) => void;
 
-  importCampaign: (data: Campaign) => void;
+  importCampaign: (data: Campaign, fileName?: string) => void;
   resetCampaign: () => void;
 }
 
@@ -75,6 +76,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
   persist(
     (set, get) => ({
       campaign: emptyCampaign(),
+      importedFileName: null,
 
       setCampaignName: (name) => set((s) => ({ campaign: { ...s.campaign, name } })),
 
@@ -329,8 +331,8 @@ export const useCampaignStore = create<CampaignStoreState>()(
       removeArtifact: (id) =>
         set((s) => ({ campaign: { ...s.campaign, artifacts: s.campaign.artifacts.filter((a) => a.id !== id) } })),
 
-      importCampaign: (data) => set({ campaign: normalizeCampaign(data) }),
-      resetCampaign: () => set({ campaign: emptyCampaign() }),
+      importCampaign: (data, fileName) => set({ campaign: normalizeCampaign(data), importedFileName: fileName ?? null }),
+      resetCampaign: () => set({ campaign: emptyCampaign(), importedFileName: null }),
     }),
     {
       name: 'daggerheart-campaign',

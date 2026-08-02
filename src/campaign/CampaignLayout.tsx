@@ -20,6 +20,7 @@ const TABS = [
 
 export function CampaignLayout() {
   const campaign = useCampaignStore((s) => s.campaign);
+  const importedFileName = useCampaignStore((s) => s.importedFileName);
   const setCampaignName = useCampaignStore((s) => s.setCampaignName);
   const importCampaign = useCampaignStore((s) => s.importCampaign);
   const role = useRoleStore((s) => s.role);
@@ -35,7 +36,7 @@ export function CampaignLayout() {
       const text = await file.text();
       const data = parseCampaignJson(text);
       if (confirm('Importar substituirá todos os dados atuais da campanha. Continuar?')) {
-        importCampaign(data);
+        importCampaign(data, file.name);
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Falha ao importar o arquivo.');
@@ -48,33 +49,38 @@ export function CampaignLayout() {
       <header className="border-b border-stone-300 bg-white">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-3 min-w-0">
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
-                  role === 'gm' ? 'bg-violet-100 text-violet-800' : 'bg-stone-100 text-stone-600'
-                }`}
-              >
-                {role === 'gm' ? 'Mestre' : 'Jogador'}
-              </span>
-              {editingName ? (
-                <input
-                  autoFocus
-                  defaultValue={campaign.name}
-                  onBlur={(e) => {
-                    setCampaignName(e.target.value || campaign.name);
-                    setEditingName(false);
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                  className="text-xl font-bold text-stone-900 border-b border-violet-400 outline-none min-w-0"
-                />
-              ) : (
-                <h1
-                  className="text-xl font-bold text-stone-900 truncate cursor-text"
-                  title="Clique para renomear"
-                  onClick={() => setEditingName(true)}
+            <div className="min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+                    role === 'gm' ? 'bg-violet-100 text-violet-800' : 'bg-stone-100 text-stone-600'
+                  }`}
                 >
-                  {campaign.name}
-                </h1>
+                  {role === 'gm' ? 'Mestre' : 'Jogador'}
+                </span>
+                {editingName ? (
+                  <input
+                    autoFocus
+                    defaultValue={campaign.name}
+                    onBlur={(e) => {
+                      setCampaignName(e.target.value || campaign.name);
+                      setEditingName(false);
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                    className="text-xl font-bold text-stone-900 border-b border-violet-400 outline-none min-w-0"
+                  />
+                ) : (
+                  <h1
+                    className="text-xl font-bold text-stone-900 truncate cursor-text"
+                    title="Clique para renomear"
+                    onClick={() => setEditingName(true)}
+                  >
+                    {campaign.name}
+                  </h1>
+                )}
+              </div>
+              {importedFileName && (
+                <p className="text-xs italic text-stone-400 mt-0.5 truncate">Arquivo: {importedFileName}</p>
               )}
             </div>
             <div className="flex gap-2 shrink-0">
