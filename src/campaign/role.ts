@@ -29,6 +29,13 @@ interface RoleState {
   signOut: () => Promise<void>;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado ao contatar o Supabase.')), ms)),
+  ]);
+}
+
 export const useRoleStore = create<RoleState>((set, get) => ({
   initialized: false,
   loading: true,
@@ -39,17 +46,22 @@ export const useRoleStore = create<RoleState>((set, get) => ({
 
   init: async () => {
     if (get().initialized) return;
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    set({ user: session?.user ?? null });
-    if (session?.user) await get().refreshProfile();
-    set({ initialized: true, loading: false });
+    try {
+      const {
+        data: { session },
+      } = await withTimeout(supabase.auth.getSession(), 8000);
+      set({ user: session?.user ?? null });
+      if (session?.user) await withTimeout(get().refreshProfile(), 8000);
+    } catch (err) {
+      console.warn('[auth] falha ao inicializar sessão:', err);
+    } finally {
+      set({ initialized: true, loading: false });
+    }
 
     supabase.auth.onAuthStateChange((_event, session) => {
       set({ user: session?.user ?? null });
       if (session?.user) {
-        get().refreshProfile();
+        get().refreshProfile().catch((err) => console.warn('[auth] falha ao atualizar perfil:', err));
       } else {
         set({ profile: null, role: null });
       }

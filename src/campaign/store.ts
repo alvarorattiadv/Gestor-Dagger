@@ -29,6 +29,13 @@ import {
   dbUpdateCampaignName,
 } from './supabaseData';
 
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado ao contatar o Supabase.')), ms)),
+  ]);
+}
+
 function normalizeMap(map: MapData): MapData {
   return {
     ...map,
@@ -126,7 +133,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
       loadFromSupabase: async () => {
         set({ loading: true });
         try {
-          const campaign = await fetchCampaign();
+          const campaign = await withTimeout(fetchCampaign(), 15000);
           set({ campaign: normalizeCampaign(campaign), loading: false, lastSyncedAt: new Date().toISOString() });
         } catch (err) {
           console.warn('[supabase] falha ao carregar campanha:', err);
