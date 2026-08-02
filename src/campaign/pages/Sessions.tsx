@@ -1,6 +1,7 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { SmallButton } from '../components/SmallButton';
+import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 
 export function Sessions() {
   const sessions = useCampaignStore((s) => s.campaign.sessions);
@@ -33,12 +34,14 @@ export function Sessions() {
                 type="date"
                 value={session.date}
                 onChange={(e) => updateSession(session.id, (s) => ({ ...s, date: e.target.value }))}
-                className="border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                disabled={!isGM}
+                className={`border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
               />
               <input
                 value={session.title}
                 onChange={(e) => updateSession(session.id, (s) => ({ ...s, title: e.target.value }))}
-                className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+                disabled={!isGM}
+                className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
                 placeholder="Título da sessão"
               />
               {isGM && (
@@ -50,22 +53,25 @@ export function Sessions() {
             <textarea
               value={session.summary}
               onChange={(e) => updateSession(session.id, (s) => ({ ...s, summary: e.target.value }))}
+              disabled={!isGM}
               placeholder="Resumo do que aconteceu"
-              className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+              className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
               rows={3}
             />
             <textarea
               value={session.hooks}
               onChange={(e) => updateSession(session.id, (s) => ({ ...s, hooks: e.target.value }))}
+              disabled={!isGM}
               placeholder="Ganchos deixados em aberto para a próxima sessão"
-              className="w-full border border-violet-300 bg-violet-50 rounded-md px-2 py-1.5 text-sm"
+              className="w-full border border-violet-300 bg-violet-50 rounded-md px-2 py-1.5 text-sm disabled:bg-violet-50/60 disabled:text-stone-500 disabled:cursor-default"
               rows={2}
             />
             <input
               value={session.lootXp}
               onChange={(e) => updateSession(session.id, (s) => ({ ...s, lootXp: e.target.value }))}
+              disabled={!isGM}
               placeholder="Loot, XP, marcos concedidos..."
-              className="w-full border border-stone-200 rounded-md px-2 py-1 text-xs text-stone-500"
+              className={`w-full border border-stone-200 rounded-md px-2 py-1 text-xs text-stone-500 ${GENERAL_FIELD_DISABLED_CLASS}`}
             />
           </div>
         ))}

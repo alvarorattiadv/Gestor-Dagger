@@ -1,5 +1,6 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
+import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import type { TemplarMember, TemplarStatus } from '../types';
 
 const SECTIONS: { status: TemplarStatus; title: string; hint: string }[] = [
@@ -17,6 +18,8 @@ export function Templars() {
   const updateTemplar = useCampaignStore((s) => s.updateTemplar);
   const removeTemplar = useCampaignStore((s) => s.removeTemplar);
   const setTemplarNotes = useCampaignStore((s) => s.setTemplarNotes);
+  const setTemplarPlayerNotes = useCampaignStore((s) => s.setTemplarPlayerNotes);
+  const isGM = useRoleStore((s) => s.role === 'gm');
 
   function addTo(status: TemplarStatus) {
     addTemplar('', status);
@@ -60,15 +63,17 @@ export function Templars() {
         );
       })}
 
-      <div className="bg-white border border-stone-200 rounded-xl p-4">
-        <h3 className="text-sm font-bold text-stone-800 mb-2">Notas gerais da Ordem</h3>
+      <div className="bg-white border border-stone-200 rounded-xl p-4 space-y-2">
+        <h3 className="text-sm font-bold text-stone-800">Notas gerais da Ordem</h3>
         <textarea
           value={templars.notes}
           onChange={(e) => setTemplarNotes(e.target.value)}
+          disabled={!isGM}
           placeholder="Hierarquia, história, rituais, sedes conhecidas..."
-          className="w-full border border-stone-300 rounded-md px-3 py-2 text-sm"
+          className={`w-full border border-stone-300 rounded-md px-3 py-2 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
           rows={4}
         />
+        <PlayerNotesField value={templars.playerNotes} onChange={setTemplarPlayerNotes} rows={3} />
       </div>
     </div>
   );
@@ -92,7 +97,8 @@ function TemplarCard({
         <input
           value={member.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
-          className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+          disabled={!isGM}
+          className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
           placeholder="Nome"
         />
         {isGM && (
@@ -104,8 +110,9 @@ function TemplarCard({
       <textarea
         value={member.description}
         onChange={(e) => onUpdate({ description: e.target.value })}
+        disabled={!isGM}
         placeholder="Notas, cargo, evidências..."
-        className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+        className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
         rows={2}
       />
       {isGM && (
@@ -117,10 +124,12 @@ function TemplarCard({
           rows={2}
         />
       )}
+      <PlayerNotesField value={member.playerNotes} onChange={(v) => onUpdate({ playerNotes: v })} />
       <select
         value={member.cityId ?? ''}
         onChange={(e) => onUpdate({ cityId: e.target.value || undefined })}
-        className="w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50"
+        disabled={!isGM}
+        className={`w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50 ${GENERAL_FIELD_DISABLED_CLASS}`}
       >
         <option value="">Sem cidade associada</option>
         {cities.map((c) => (

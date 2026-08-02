@@ -1,6 +1,7 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { SmallButton } from '../components/SmallButton';
+import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import type { Artifact, ArtifactStatus } from '../types';
 
 const STATUS_LABEL: Record<ArtifactStatus, string> = {
@@ -64,8 +65,9 @@ function ArtifactCard({
         <input
           value={artifact.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
+          disabled={!isGM}
           placeholder="Nome do artefato"
-          className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+          className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
         />
         {isGM && (
           <button onClick={onRemove} className="text-xs text-red-600 hover:underline shrink-0 px-1">
@@ -76,8 +78,9 @@ function ArtifactCard({
       <textarea
         value={artifact.description}
         onChange={(e) => onUpdate({ description: e.target.value })}
+        disabled={!isGM}
         placeholder="Origem, poderes, história..."
-        className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+        className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
         rows={2}
       />
       <div className="flex gap-1.5">
@@ -85,7 +88,8 @@ function ArtifactCard({
           <button
             key={status}
             onClick={() => onUpdate({ status })}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium border-2 transition-colors ${
+            disabled={!isGM}
+            className={`px-2.5 py-1 rounded-full text-xs font-medium border-2 transition-colors disabled:cursor-default ${
               artifact.status === status ? `${STATUS_CLASS[status]} border-transparent` : 'bg-white border-stone-300 text-stone-500'
             }`}
           >
@@ -98,17 +102,29 @@ function ArtifactCard({
           <input
             value={artifact.possibleLocation}
             onChange={(e) => onUpdate({ possibleLocation: e.target.value })}
+            disabled={!isGM}
             placeholder="Possível local"
-            className="w-full border border-emerald-300 rounded-md px-2 py-1.5 text-sm bg-white"
+            className="w-full border border-emerald-300 rounded-md px-2 py-1.5 text-sm bg-white disabled:bg-emerald-50/60 disabled:text-stone-500 disabled:cursor-default"
           />
           <input
             value={artifact.possibleOwner}
             onChange={(e) => onUpdate({ possibleOwner: e.target.value })}
+            disabled={!isGM}
             placeholder="Possível atual possuidor"
-            className="w-full border border-emerald-300 rounded-md px-2 py-1.5 text-sm bg-white"
+            className="w-full border border-emerald-300 rounded-md px-2 py-1.5 text-sm bg-white disabled:bg-emerald-50/60 disabled:text-stone-500 disabled:cursor-default"
           />
         </div>
       )}
+      {isGM && (
+        <textarea
+          value={artifact.gmSecret}
+          onChange={(e) => onUpdate({ gmSecret: e.target.value })}
+          placeholder="Segredo do mestre"
+          className="w-full border border-amber-300 bg-amber-50 rounded-md px-2 py-1.5 text-sm"
+          rows={2}
+        />
+      )}
+      <PlayerNotesField value={artifact.playerNotes} onChange={(v) => onUpdate({ playerNotes: v })} />
     </div>
   );
 }

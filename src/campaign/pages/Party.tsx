@@ -1,5 +1,6 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
+import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 
 export function Party() {
   const party = useCampaignStore((s) => s.campaign.party);
@@ -41,8 +42,9 @@ export function Party() {
                 <input
                   value={player.charName}
                   onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, charName: e.target.value }))}
+                  disabled={!isGM}
                   placeholder="Nome do personagem"
-                  className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
                 />
                 {isGM && (
                   <button onClick={() => removePlayer(player.id)} className="text-xs text-red-600 hover:underline shrink-0 px-1">
@@ -54,22 +56,39 @@ export function Party() {
                 <input
                   value={player.playerName}
                   onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, playerName: e.target.value }))}
+                  disabled={!isGM}
                   placeholder="Jogador(a)"
-                  className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
                 />
                 <input
                   value={player.ancestryClass}
                   onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryClass: e.target.value }))}
+                  disabled={!isGM}
                   placeholder="Ascendência / Classe"
-                  className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
                 />
               </div>
               <textarea
                 value={player.notes}
                 onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, notes: e.target.value }))}
-                placeholder="Motivações, laços, notas do mestre..."
-                className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                disabled={!isGM}
+                placeholder="Motivações, laços (visão do mestre)"
+                className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
                 rows={2}
+              />
+              {isGM && (
+                <textarea
+                  value={player.gmSecret}
+                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, gmSecret: e.target.value }))}
+                  placeholder="Segredo do mestre sobre este personagem"
+                  className="w-full border border-amber-300 bg-amber-50 rounded-md px-2 py-1.5 text-sm"
+                  rows={2}
+                />
+              )}
+              <PlayerNotesField
+                value={player.playerNotes}
+                onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, playerNotes: v }))}
+                placeholder="Como o jogador vê a evolução do próprio personagem"
               />
             </div>
           ))}

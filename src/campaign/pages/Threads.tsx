@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { SmallButton } from '../components/SmallButton';
+import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import type { ThreadStatus } from '../types';
 
 const STATUS_LABEL: Record<ThreadStatus, string> = {
@@ -61,12 +62,14 @@ export function Threads() {
               <input
                 value={thread.title}
                 onChange={(e) => updateThread(thread.id, (t) => ({ ...t, title: e.target.value }))}
-                className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+                disabled={!isGM}
+                className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
               />
               <select
                 value={thread.status}
                 onChange={(e) => updateThread(thread.id, (t) => ({ ...t, status: e.target.value as ThreadStatus }))}
-                className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 ${STATUS_CLASS[thread.status]}`}
+                disabled={!isGM}
+                className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 ${STATUS_CLASS[thread.status]} disabled:opacity-70 disabled:cursor-default`}
               >
                 {(Object.keys(STATUS_LABEL) as ThreadStatus[]).map((s) => (
                   <option key={s} value={s}>
@@ -83,14 +86,16 @@ export function Threads() {
             <textarea
               value={thread.description}
               onChange={(e) => updateThread(thread.id, (t) => ({ ...t, description: e.target.value }))}
-              className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+              disabled={!isGM}
+              className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
               rows={2}
               placeholder="Detalhes do fio narrativo"
             />
             <select
               value={thread.cityId ?? ''}
               onChange={(e) => updateThread(thread.id, (t) => ({ ...t, cityId: e.target.value || undefined }))}
-              className="border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50"
+              disabled={!isGM}
+              className={`border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50 ${GENERAL_FIELD_DISABLED_CLASS}`}
             >
               <option value="">Sem cidade associada</option>
               {cities.map((c) => (

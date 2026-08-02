@@ -4,6 +4,7 @@ import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { MapEditor } from '../components/MapEditor';
 import { SmallButton } from '../components/SmallButton';
+import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import type { Npc, Rumor, RumorStatus } from '../types';
 
 const TABS = [
@@ -67,10 +68,23 @@ export function CityDetail() {
       <textarea
         value={city.summary}
         onChange={(e) => updateCity(cityId, (c) => ({ ...c, summary: e.target.value }))}
+        disabled={!isGM}
         placeholder="Resumo da cidade (governo, clima, o que a torna única...)"
-        className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm bg-white"
+        className={`w-full border border-stone-300 rounded-lg px-3 py-2 text-sm bg-white ${GENERAL_FIELD_DISABLED_CLASS}`}
         rows={2}
       />
+
+      {isGM && (
+        <textarea
+          value={city.gmSecret}
+          onChange={(e) => updateCity(cityId, (c) => ({ ...c, gmSecret: e.target.value }))}
+          placeholder="Segredo do mestre sobre a cidade"
+          className="w-full border border-amber-300 bg-amber-50 rounded-lg px-3 py-2 text-sm"
+          rows={2}
+        />
+      )}
+
+      <PlayerNotesField value={city.playerNotes} onChange={(v) => updateCity(cityId, (c) => ({ ...c, playerNotes: v }))} />
 
       <div className="flex gap-1 border-b border-stone-300">
         {TABS.map((tab) => (
@@ -105,7 +119,7 @@ export function CityDetail() {
 
 function NpcsTab({ npcs, onChange, isGM }: { npcs: Npc[]; onChange: (npcs: Npc[]) => void; isGM: boolean }) {
   function add() {
-    onChange([...npcs, { id: crypto.randomUUID(), name: 'Novo NPC', role: '', description: '', secret: '' }]);
+    onChange([...npcs, { id: crypto.randomUUID(), name: 'Novo NPC', role: '', description: '', secret: '', playerNotes: '' }]);
   }
   function update(id: string, patch: Partial<Npc>) {
     onChange(npcs.map((n) => (n.id === id ? { ...n, ...patch } : n)));
@@ -127,14 +141,16 @@ function NpcsTab({ npcs, onChange, isGM }: { npcs: Npc[]; onChange: (npcs: Npc[]
             <input
               value={npc.name}
               onChange={(e) => update(npc.id, { name: e.target.value })}
+              disabled={!isGM}
               placeholder="Nome"
-              className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+              className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
             />
             <input
               value={npc.role}
               onChange={(e) => update(npc.id, { role: e.target.value })}
+              disabled={!isGM}
               placeholder="Papel/ocupação"
-              className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+              className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
             />
             {isGM && (
               <button onClick={() => remove(npc.id)} className="text-xs text-red-600 hover:underline shrink-0 px-1">
@@ -145,8 +161,9 @@ function NpcsTab({ npcs, onChange, isGM }: { npcs: Npc[]; onChange: (npcs: Npc[]
           <textarea
             value={npc.description}
             onChange={(e) => update(npc.id, { description: e.target.value })}
+            disabled={!isGM}
             placeholder="Descrição, personalidade, ganchos..."
-            className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+            className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
             rows={2}
           />
           {isGM && (
@@ -158,6 +175,7 @@ function NpcsTab({ npcs, onChange, isGM }: { npcs: Npc[]; onChange: (npcs: Npc[]
               rows={2}
             />
           )}
+          <PlayerNotesField value={npc.playerNotes} onChange={(v) => update(npc.id, { playerNotes: v })} />
         </div>
       ))}
     </div>
@@ -177,7 +195,7 @@ const RUMOR_STATUS_CLASS: Record<RumorStatus, string> = {
 
 function RumoresTab({ rumors, onChange, isGM }: { rumors: Rumor[]; onChange: (rumors: Rumor[]) => void; isGM: boolean }) {
   function add() {
-    onChange([...rumors, { id: crypto.randomUUID(), text: '', status: 'nao-verificado', source: '', notes: '' }]);
+    onChange([...rumors, { id: crypto.randomUUID(), text: '', status: 'nao-verificado', source: '', notes: '', playerNotes: '' }]);
   }
   function update(id: string, patch: Partial<Rumor>) {
     onChange(rumors.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -198,15 +216,17 @@ function RumoresTab({ rumors, onChange, isGM }: { rumors: Rumor[]; onChange: (ru
           <textarea
             value={rumor.text}
             onChange={(e) => update(rumor.id, { text: e.target.value })}
+            disabled={!isGM}
             placeholder="O que se ouve pelas ruas..."
-            className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+            className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
             rows={2}
           />
           <div className="flex flex-wrap gap-2 items-center">
             <select
               value={rumor.status}
               onChange={(e) => update(rumor.id, { status: e.target.value as RumorStatus })}
-              className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 ${RUMOR_STATUS_CLASS[rumor.status]}`}
+              disabled={!isGM}
+              className={`text-xs font-medium rounded-full px-2.5 py-1 border-0 ${RUMOR_STATUS_CLASS[rumor.status]} disabled:opacity-70 disabled:cursor-default`}
             >
               {(Object.keys(RUMOR_STATUS_LABEL) as RumorStatus[]).map((s) => (
                 <option key={s} value={s}>
@@ -217,8 +237,9 @@ function RumoresTab({ rumors, onChange, isGM }: { rumors: Rumor[]; onChange: (ru
             <input
               value={rumor.source}
               onChange={(e) => update(rumor.id, { source: e.target.value })}
+              disabled={!isGM}
               placeholder="Fonte (quem contou)"
-              className="flex-1 min-w-[140px] border border-stone-300 rounded-md px-2 py-1 text-xs"
+              className={`flex-1 min-w-[140px] border border-stone-300 rounded-md px-2 py-1 text-xs ${GENERAL_FIELD_DISABLED_CLASS}`}
             />
             {isGM && (
               <button onClick={() => remove(rumor.id)} className="text-xs text-red-600 hover:underline">
@@ -226,12 +247,16 @@ function RumoresTab({ rumors, onChange, isGM }: { rumors: Rumor[]; onChange: (ru
               </button>
             )}
           </div>
-          <input
-            value={rumor.notes}
-            onChange={(e) => update(rumor.id, { notes: e.target.value })}
-            placeholder="Notas do mestre"
-            className="w-full border border-stone-200 rounded-md px-2 py-1 text-xs text-stone-500"
-          />
+          {isGM && (
+            <textarea
+              value={rumor.notes}
+              onChange={(e) => update(rumor.id, { notes: e.target.value })}
+              placeholder="Segredo do mestre sobre este rumor"
+              className="w-full border border-amber-300 bg-amber-50 rounded-md px-2 py-1.5 text-sm"
+              rows={2}
+            />
+          )}
+          <PlayerNotesField value={rumor.playerNotes} onChange={(v) => update(rumor.id, { playerNotes: v })} />
         </div>
       ))}
     </div>

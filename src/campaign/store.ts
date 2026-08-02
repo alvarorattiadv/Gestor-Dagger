@@ -13,14 +13,26 @@ function normalizeMap(map: MapData): MapData {
 function normalizeCampaign(campaign: Campaign): Campaign {
   return {
     ...campaign,
-    globalNpcs: campaign.globalNpcs ?? [],
-    factions: campaign.factions ?? [],
-    artifacts: campaign.artifacts ?? [],
+    globalNpcs: (campaign.globalNpcs ?? []).map((n) => ({ ...n, playerNotes: n.playerNotes ?? '' })),
+    factions: (campaign.factions ?? []).map((f) => ({ ...f, playerNotes: f.playerNotes ?? '' })),
+    artifacts: (campaign.artifacts ?? []).map((a) => ({ ...a, gmSecret: a.gmSecret ?? '', playerNotes: a.playerNotes ?? '' })),
     worldMap: normalizeMap(campaign.worldMap),
-    cities: campaign.cities.map((c) => ({ ...c, map: normalizeMap(c.map) })),
+    cities: campaign.cities.map((c) => ({
+      ...c,
+      gmSecret: c.gmSecret ?? '',
+      playerNotes: c.playerNotes ?? '',
+      map: normalizeMap(c.map),
+      npcs: c.npcs.map((n) => ({ ...n, playerNotes: n.playerNotes ?? '' })),
+      rumors: c.rumors.map((r) => ({ ...r, playerNotes: r.playerNotes ?? '' })),
+    })),
     templars: {
       ...campaign.templars,
-      members: campaign.templars.members.map((m) => ({ ...m, gmSecret: m.gmSecret ?? '' })),
+      playerNotes: campaign.templars.playerNotes ?? '',
+      members: campaign.templars.members.map((m) => ({ ...m, gmSecret: m.gmSecret ?? '', playerNotes: m.playerNotes ?? '' })),
+    },
+    party: {
+      ...campaign.party,
+      players: campaign.party.players.map((p) => ({ ...p, gmSecret: p.gmSecret ?? '', playerNotes: p.playerNotes ?? '' })),
     },
   };
 }
@@ -41,6 +53,7 @@ interface CampaignStoreState {
   updateTemplar: (id: string, updater: (m: TemplarMember) => TemplarMember) => void;
   removeTemplar: (id: string) => void;
   setTemplarNotes: (notes: string) => void;
+  setTemplarPlayerNotes: (playerNotes: string) => void;
 
   addThread: () => void;
   updateThread: (id: string, updater: (t: Thread) => Thread) => void;
@@ -153,7 +166,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
               ...s.campaign.templars,
               members: [
                 ...s.campaign.templars.members,
-                { id: crypto.randomUUID(), name: name || 'Novo Templário', status, description: '', gmSecret: '', cityId: undefined },
+                { id: crypto.randomUUID(), name: name || 'Novo Templário', status, description: '', gmSecret: '', playerNotes: '', cityId: undefined },
               ],
             },
           },
@@ -180,6 +193,9 @@ export const useCampaignStore = create<CampaignStoreState>()(
 
       setTemplarNotes: (notes) =>
         set((s) => ({ campaign: { ...s.campaign, templars: { ...s.campaign.templars, notes } } })),
+
+      setTemplarPlayerNotes: (playerNotes) =>
+        set((s) => ({ campaign: { ...s.campaign, templars: { ...s.campaign.templars, playerNotes } } })),
 
       addThread: () =>
         set((s) => ({
@@ -248,7 +264,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
               ...s.campaign.party,
               players: [
                 ...s.campaign.party.players,
-                { id: crypto.randomUUID(), playerName: '', charName: 'Novo Personagem', ancestryClass: '', notes: '' },
+                { id: crypto.randomUUID(), playerName: '', charName: 'Novo Personagem', ancestryClass: '', notes: '', gmSecret: '', playerNotes: '' },
               ],
             },
           },
@@ -273,7 +289,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
             ...s.campaign,
             globalNpcs: [
               ...s.campaign.globalNpcs,
-              { id: crypto.randomUUID(), name: 'Novo NPC', role: '', description: '', secret: '', cityId: undefined },
+              { id: crypto.randomUUID(), name: 'Novo NPC', role: '', description: '', secret: '', playerNotes: '', cityId: undefined },
             ],
           },
         })),
@@ -292,7 +308,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
             ...s.campaign,
             factions: [
               ...s.campaign.factions,
-              { id: crypto.randomUUID(), name: 'Nova facção', leader: '', description: '', notes: '', cityId: undefined },
+              { id: crypto.randomUUID(), name: 'Nova facção', leader: '', description: '', notes: '', playerNotes: '', cityId: undefined },
             ],
           },
         })),
@@ -318,6 +334,8 @@ export const useCampaignStore = create<CampaignStoreState>()(
                 status: 'mito',
                 possibleLocation: '',
                 possibleOwner: '',
+                gmSecret: '',
+                playerNotes: '',
               },
             ],
           },

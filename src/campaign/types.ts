@@ -45,6 +45,7 @@ export interface Npc {
   role: string;
   description: string;
   secret: string;
+  playerNotes: string;
 }
 
 export type RumorStatus = 'nao-verificado' | 'confirmado' | 'desmentido';
@@ -55,6 +56,7 @@ export interface Rumor {
   status: RumorStatus;
   source: string;
   notes: string;
+  playerNotes: string;
 }
 
 export interface MoraleLogEntry {
@@ -74,6 +76,8 @@ export interface City {
   id: string;
   name: string;
   summary: string;
+  gmSecret: string;
+  playerNotes: string;
   map: MapData;
   npcs: Npc[];
   rumors: Rumor[];
@@ -90,12 +94,14 @@ export interface TemplarMember {
   status: TemplarStatus;
   description: string;
   gmSecret: string;
+  playerNotes: string;
   cityId?: string;
 }
 
 export interface TemplarOrder {
   members: TemplarMember[];
   notes: string;
+  playerNotes: string;
 }
 
 export type ThreadStatus = 'ativo' | 'concluido' | 'esquecido';
@@ -124,6 +130,8 @@ export interface Player {
   charName: string;
   ancestryClass: string;
   notes: string;
+  gmSecret: string;
+  playerNotes: string;
 }
 
 export interface PartyResources {
@@ -138,6 +146,7 @@ export interface GlobalNpc {
   role: string;
   description: string;
   secret: string;
+  playerNotes: string;
   cityId?: string;
 }
 
@@ -147,6 +156,7 @@ export interface Faction {
   leader: string;
   description: string;
   notes: string;
+  playerNotes: string;
   cityId?: string;
 }
 
@@ -159,6 +169,8 @@ export interface Artifact {
   status: ArtifactStatus;
   possibleLocation: string;
   possibleOwner: string;
+  gmSecret: string;
+  playerNotes: string;
 }
 
 export interface Campaign {
@@ -179,7 +191,7 @@ export function emptyCampaign(): Campaign {
     name: 'Minha Campanha de Daggerheart',
     worldMap: createEmptyMap('parchment'),
     cities: [],
-    templars: { members: [], notes: '' },
+    templars: { members: [], notes: '', playerNotes: '' },
     threads: [],
     sessions: [],
     party: { hope: 2, fear: 0, players: [] },
@@ -195,6 +207,8 @@ export function emptyCity(name: string): City {
     id: crypto.randomUUID(),
     name,
     summary: '',
+    gmSecret: '',
+    playerNotes: '',
     map: createEmptyMap('parchment'),
     npcs: [],
     rumors: [],

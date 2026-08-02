@@ -1,6 +1,7 @@
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { SmallButton } from '../components/SmallButton';
+import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import type { Faction, GlobalNpc } from '../types';
 
 export function NpcsFactions() {
@@ -80,14 +81,16 @@ function GlobalNpcCard({
         <input
           value={npc.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
+          disabled={!isGM}
           placeholder="Nome"
-          className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+          className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
         />
         <input
           value={npc.role}
           onChange={(e) => onUpdate({ role: e.target.value })}
+          disabled={!isGM}
           placeholder="Papel/ocupação"
-          className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+          className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
         />
         {isGM && (
           <button onClick={onRemove} className="text-xs text-red-600 hover:underline shrink-0 px-1">
@@ -98,8 +101,9 @@ function GlobalNpcCard({
       <textarea
         value={npc.description}
         onChange={(e) => onUpdate({ description: e.target.value })}
+        disabled={!isGM}
         placeholder="Descrição, personalidade, ganchos..."
-        className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+        className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
         rows={2}
       />
       {isGM && (
@@ -111,10 +115,12 @@ function GlobalNpcCard({
           rows={2}
         />
       )}
+      <PlayerNotesField value={npc.playerNotes} onChange={(v) => onUpdate({ playerNotes: v })} />
       <select
         value={npc.cityId ?? ''}
         onChange={(e) => onUpdate({ cityId: e.target.value || undefined })}
-        className="w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50"
+        disabled={!isGM}
+        className={`w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50 ${GENERAL_FIELD_DISABLED_CLASS}`}
       >
         <option value="">Sem cidade associada</option>
         {cities.map((c) => (
@@ -145,8 +151,9 @@ function FactionCard({
         <input
           value={faction.name}
           onChange={(e) => onUpdate({ name: e.target.value })}
+          disabled={!isGM}
           placeholder="Nome da facção"
-          className="flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold"
+          className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
         />
         {isGM && (
           <button onClick={onRemove} className="text-xs text-red-600 hover:underline shrink-0 px-1">
@@ -157,14 +164,16 @@ function FactionCard({
       <input
         value={faction.leader}
         onChange={(e) => onUpdate({ leader: e.target.value })}
+        disabled={!isGM}
         placeholder="Líder"
-        className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+        className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
       />
       <textarea
         value={faction.description}
         onChange={(e) => onUpdate({ description: e.target.value })}
+        disabled={!isGM}
         placeholder="Objetivos, área de atuação, aliados/inimigos..."
-        className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+        className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
         rows={2}
       />
       {isGM && (
@@ -176,10 +185,12 @@ function FactionCard({
           rows={2}
         />
       )}
+      <PlayerNotesField value={faction.playerNotes} onChange={(v) => onUpdate({ playerNotes: v })} />
       <select
         value={faction.cityId ?? ''}
         onChange={(e) => onUpdate({ cityId: e.target.value || undefined })}
-        className="w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50"
+        disabled={!isGM}
+        className={`w-full border border-stone-300 rounded-md px-2 py-1 text-xs bg-stone-50 ${GENERAL_FIELD_DISABLED_CLASS}`}
       >
         <option value="">Sem sede associada</option>
         {cities.map((c) => (
