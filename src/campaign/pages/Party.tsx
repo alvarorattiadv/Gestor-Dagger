@@ -11,6 +11,7 @@ export function Party() {
   const updatePlayer = useCampaignStore((s) => s.updatePlayer);
   const removePlayer = useCampaignStore((s) => s.removePlayer);
   const isGM = useRoleStore((s) => s.role === 'gm');
+  const userId = useRoleStore((s) => s.user?.id);
 
   return (
     <div className="space-y-6">
@@ -29,7 +30,7 @@ export function Party() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-bold text-stone-800">Personagens</h3>
-          <button onClick={addPlayer} className="text-xs font-medium text-violet-700 hover:underline">
+          <button onClick={() => addPlayer(isGM ? undefined : userId)} className="text-xs font-medium text-violet-700 hover:underline">
             + Personagem
           </button>
         </div>
@@ -39,62 +40,89 @@ export function Party() {
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {party.players.map((player) => (
-            <div key={player.id} className="bg-white border border-stone-200 rounded-xl p-3 space-y-2">
-              <div className="flex gap-2">
-                <input
-                  value={player.charName}
-                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, charName: e.target.value }))}
-                  disabled={!isGM}
-                  placeholder="Nome do personagem"
-                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
-                />
-                {isGM && (
-                  <button onClick={() => removePlayer(player.id)} className="text-xs text-red-600 hover:underline shrink-0 px-1">
-                    Excluir
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={player.playerName}
-                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, playerName: e.target.value }))}
-                  disabled={!isGM}
-                  placeholder="Jogador(a)"
-                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
-                />
-                <input
-                  value={player.ancestryClass}
-                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryClass: e.target.value }))}
-                  disabled={!isGM}
-                  placeholder="Ascendência / Classe"
-                  className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
-                />
-              </div>
-              <textarea
-                value={player.notes}
-                onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, notes: e.target.value }))}
-                disabled={!isGM}
-                placeholder="Motivações, laços (visão do mestre)"
-                className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
-                rows={2}
-              />
-              {isGM && (
+          {party.players.map((player) => {
+            const isOwner = Boolean(userId) && player.linkedUserId === userId;
+            const canEditIdentity = isGM || isOwner;
+            return (
+              <div key={player.id} className="bg-white border border-stone-200 rounded-xl p-3 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    value={player.charName}
+                    onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, charName: e.target.value }))}
+                    disabled={!canEditIdentity}
+                    placeholder="Nome do personagem"
+                    className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
+                  />
+                  {isGM && (
+                    <button onClick={() => removePlayer(player.id)} className="text-xs text-red-600 hover:underline shrink-0 px-1">
+                      Excluir
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={player.playerName}
+                    onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, playerName: e.target.value }))}
+                    disabled={!canEditIdentity}
+                    placeholder="Jogador(a)"
+                    className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+                  />
+                  <input
+                    value={player.ancestryClass}
+                    onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryClass: e.target.value }))}
+                    disabled={!canEditIdentity}
+                    placeholder="Ascendência / Classe"
+                    className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+                  />
+                </div>
                 <textarea
-                  value={player.gmSecret}
-                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, gmSecret: e.target.value }))}
-                  placeholder="Segredo do mestre sobre este personagem"
-                  className="w-full border border-amber-300 bg-amber-50 rounded-md px-2 py-1.5 text-sm"
+                  value={player.notes}
+                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, notes: e.target.value }))}
+                  disabled={!isGM}
+                  placeholder="Motivações, laços (visão do mestre)"
+                  className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
                   rows={2}
                 />
-              )}
-              <PlayerNotesField
-                value={player.playerNotes}
-                onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, playerNotes: v }))}
-                placeholder="Como o jogador vê a evolução do próprio personagem"
-              />
-            </div>
-          ))}
+                {isGM && (
+                  <textarea
+                    value={player.gmSecret}
+                    onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, gmSecret: e.target.value }))}
+                    placeholder="Segredo do mestre sobre este personagem"
+                    className="w-full border border-amber-300 bg-amber-50 rounded-md px-2 py-1.5 text-sm"
+                    rows={2}
+                  />
+                )}
+                <PlayerNotesField
+                  value={player.playerNotes}
+                  onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, playerNotes: v }))}
+                  placeholder="Como o jogador vê a evolução do próprio personagem"
+                />
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
+                  {player.linkedUserId ? (
+                    <span className="text-emerald-700 font-medium">🔗 Vinculado a uma conta</span>
+                  ) : (
+                    <span className="text-stone-400">Não vinculado a nenhuma conta</span>
+                  )}
+                  {!isGM && !player.linkedUserId && userId && (
+                    <button
+                      onClick={() => updatePlayer(player.id, (p) => ({ ...p, linkedUserId: userId }))}
+                      className="text-violet-700 hover:underline font-medium"
+                    >
+                      Este é o meu personagem
+                    </button>
+                  )}
+                  {(isGM || isOwner) && player.linkedUserId && (
+                    <button
+                      onClick={() => updatePlayer(player.id, (p) => ({ ...p, linkedUserId: undefined }))}
+                      className="text-stone-500 hover:underline"
+                    >
+                      Desvincular
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

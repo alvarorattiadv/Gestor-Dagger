@@ -95,7 +95,7 @@ interface CampaignStoreState {
 
   setHope: (v: number) => void;
   setFear: (v: number) => void;
-  addPlayer: () => void;
+  addPlayer: (linkedUserId?: string) => void;
   updatePlayer: (id: string, updater: (p: Player) => Player) => void;
   removePlayer: (id: string) => void;
 
@@ -348,7 +348,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
         dbUpdatePartyResources(party.hope, party.fear);
       },
 
-      addPlayer: () => {
+      addPlayer: (linkedUserId) => {
         const player: Player = {
           id: crypto.randomUUID(),
           playerName: '',
@@ -357,6 +357,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
           notes: '',
           gmSecret: '',
           playerNotes: '',
+          linkedUserId,
         };
         set((s) => ({ campaign: { ...s.campaign, party: { ...s.campaign.party, players: [...s.campaign.party.players, player] } } }));
         dbUpsertPlayer(player);

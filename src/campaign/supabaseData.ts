@@ -103,6 +103,7 @@ function playerFromRow(row: any): Player {
     notes: row.notes,
     gmSecret: row.gm_secret,
     playerNotes: row.player_notes,
+    linkedUserId: row.linked_user_id ?? undefined,
   };
 }
 
@@ -374,9 +375,16 @@ export async function dbDeleteArtifact(id: string) {
 // ---------------------------------------------------------------------------
 
 export async function dbUpsertPlayer(p: Player) {
-  const { error } = await supabase
-    .from('party_characters')
-    .upsert({ id: p.id, player_name: p.playerName, char_name: p.charName, ancestry_class: p.ancestryClass, notes: p.notes, gm_secret: p.gmSecret, player_notes: p.playerNotes });
+  const { error } = await supabase.from('party_characters').upsert({
+    id: p.id,
+    player_name: p.playerName,
+    char_name: p.charName,
+    ancestry_class: p.ancestryClass,
+    notes: p.notes,
+    gm_secret: p.gmSecret,
+    player_notes: p.playerNotes,
+    linked_user_id: p.linkedUserId ?? null,
+  });
   if (error) logSyncError('upsert player', error);
 }
 

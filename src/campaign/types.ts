@@ -132,6 +132,7 @@ export interface Player {
   notes: string;
   gmSecret: string;
   playerNotes: string;
+  linkedUserId?: string;
 }
 
 export interface PartyResources {
