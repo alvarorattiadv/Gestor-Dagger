@@ -1,0 +1,5 @@
+[build]
+  # Skip the build entirely when a push only touches files outside the app
+  # itself (e.g. supabase/ SQL migrations) — those never change the deployed
+  # site, so rebuilding for them just burns free-tier build minutes.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':(exclude)supabase' ':(exclude)*.md'"
