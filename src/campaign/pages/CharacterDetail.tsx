@@ -66,6 +66,7 @@ export function CharacterDetail() {
   const selectedSubclass = rules.subclasses.find((s) => s.id === player.subclassId);
   const classDomains = selectedClass ? [selectedClass.domain1, selectedClass.domain2] : [];
   const tier = tierForLevel(player.level);
+  const myAdvancements = advancementsByCharacter[player.id] ?? [];
 
   const availableCards = rules.domainCards
     .filter((c) => classDomains.includes(c.domain) && c.level <= player.level)
@@ -78,9 +79,18 @@ export function CharacterDetail() {
   );
   const myCards = rules.domainCards.filter((c) => myCardIds.has(c.id));
   const activeCardCount = myCards.filter((c) => claimedCards[c.id]?.inLoadout).length;
+  // 2 cards at creation + 1 guaranteed per level-up (so level+1 total) + one more per "extra domain card" advancement taken.
+  const extraCardAdvancements = myAdvancements.filter((a) => a.optionId === 'extra-domain-card').length;
+  const maxDomainCards = player.level + 1 + extraCardAdvancements;
 
   async function handleClaim(cardId: string) {
     if (!player) return;
+    if (myCards.length >= maxDomainCards) {
+      setCardError(
+        `Esse personagem já tem o máximo de cartas pro nível atual (${maxDomainCards}: 2 da criação + 1 por nível + avanços de "carta adicional"). Suba de nível ou registre esse avanço pra liberar mais uma.`,
+      );
+      return;
+    }
     setCardError('');
     setBusyCardId(cardId);
     const result = await claimCard(player.id, cardId, activeCardCount < MAX_LOADOUT_CARDS);
@@ -122,7 +132,6 @@ export function CharacterDetail() {
   const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
   const hasBareBones = myCards.some((c) => c.name === 'BARE BONES');
-  const myAdvancements = advancementsByCharacter[player.id] ?? [];
   const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones, myAdvancements);
 
   function setManual(field: keyof Pick<Player, 'bonusEvasion' | 'bonusHitPoints' | 'bonusStress' | 'bonusMajorThreshold' | 'bonusSevereThreshold'>, value: number) {
@@ -437,7 +446,7 @@ export function CharacterDetail() {
       </Section>
 
       {/* Cartas de domínio */}
-      <Section title={`Cartas de Domínio (${myCards.length}) — ${activeCardCount}/${MAX_LOADOUT_CARDS} ativas`}>
+      <Section title={`Cartas de Domínio (${myCards.length}/${maxDomainCards}) — ${activeCardCount}/${MAX_LOADOUT_CARDS} ativas`}>
         {!player.classId && <p className="text-xs text-stone-400">Escolha uma classe para ver as cartas disponíveis.</p>}
         {myCards.length > 0 && (
           <div className="space-y-2 mb-3">
