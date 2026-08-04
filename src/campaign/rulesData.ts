@@ -1,7 +1,9 @@
 import { supabase } from './supabaseClient';
 import type {
+  AdvancementOption,
   Ancestry,
   Armor,
+  CharacterAdvancement,
   Community,
   DaggerClass,
   DaggerheartRules,
@@ -92,8 +94,12 @@ function armorFromRow(row: any): Armor {
   };
 }
 
+function advancementOptionFromRow(row: any): AdvancementOption {
+  return { id: row.id, name: row.name, slotCost: row.slot_cost, description: row.description, minTier: row.min_tier };
+}
+
 export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
-  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes] = await Promise.all([
+  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes] = await Promise.all([
     supabase.from('domains').select('*'),
     supabase.from('classes').select('*'),
     supabase.from('subclasses').select('*'),
@@ -102,9 +108,10 @@ export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
     supabase.from('communities').select('*'),
     supabase.from('weapons').select('*'),
     supabase.from('armors').select('*'),
+    supabase.from('advancement_options').select('*'),
   ]);
 
-  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes]) {
+  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes]) {
     if (res.error) throw new Error(res.error.message);
   }
 
@@ -117,6 +124,7 @@ export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
     communities: (communitiesRes.data ?? []).map(communityFromRow),
     weapons: (weaponsRes.data ?? []).map(weaponFromRow),
     armors: (armorsRes.data ?? []).map(armorFromRow),
+    advancementOptions: (advancementsRes.data ?? []).map(advancementOptionFromRow),
   };
 }
 
@@ -154,4 +162,33 @@ export async function releaseDomainCard(characterId: string, domainCardId: strin
 
 export async function setDomainCardLoadout(characterId: string, domainCardId: string, inLoadout: boolean): Promise<void> {
   await supabase.from('character_domain_cards').update({ in_loadout: inLoadout }).eq('character_id', characterId).eq('domain_card_id', domainCardId);
+}
+
+function advancementFromRow(row: any): CharacterAdvancement {
+  return { id: row.id, characterId: row.character_id, level: row.level, optionId: row.option_id, detail: row.detail, createdAt: row.created_at };
+}
+
+export async function fetchCharacterAdvancements(characterId: string): Promise<CharacterAdvancement[]> {
+  const { data, error } = await supabase
+    .from('character_advancements')
+    .select('*')
+    .eq('character_id', characterId)
+    .order('level', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(advancementFromRow);
+}
+
+export async function addCharacterAdvancement(characterId: string, level: number, optionId: string, detail: string): Promise<CharacterAdvancement> {
+  const { data, error } = await supabase
+    .from('character_advancements')
+    .insert({ character_id: characterId, level, option_id: optionId, detail })
+    .select('*')
+    .single();
+  if (error) throw new Error(error.message);
+  return advancementFromRow(data);
+}
+
+export async function removeCharacterAdvancement(id: string): Promise<void> {
+  await supabase.from('character_advancements').delete().eq('id', id);
 }

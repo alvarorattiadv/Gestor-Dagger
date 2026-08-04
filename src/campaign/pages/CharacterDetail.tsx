@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
-import type { FeatureText } from '../rulesTypes';
+import type { AdvancementOption, CharacterAdvancement, FeatureText } from '../rulesTypes';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
 
@@ -24,12 +24,21 @@ export function CharacterDetail() {
   const claimCard = useRulesStore((s) => s.claimCard);
   const releaseCard = useRulesStore((s) => s.releaseCard);
   const setCardLoadout = useRulesStore((s) => s.setCardLoadout);
+  const advancementsByCharacter = useRulesStore((s) => s.advancementsByCharacter);
+  const loadAdvancements = useRulesStore((s) => s.loadAdvancements);
+  const addAdvancement = useRulesStore((s) => s.addAdvancement);
+  const removeAdvancement = useRulesStore((s) => s.removeAdvancement);
   const [cardError, setCardError] = useState('');
   const [busyCardId, setBusyCardId] = useState<string | null>(null);
+  const [advError, setAdvError] = useState('');
 
   useEffect(() => {
     loadRules();
   }, [loadRules]);
+
+  useEffect(() => {
+    if (characterId) loadAdvancements(characterId);
+  }, [characterId, loadAdvancements]);
 
   if (!player || !characterId) {
     return (
@@ -113,7 +122,8 @@ export function CharacterDetail() {
   const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
   const hasBareBones = myCards.some((c) => c.name === 'BARE BONES');
-  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones);
+  const myAdvancements = advancementsByCharacter[player.id] ?? [];
+  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones, myAdvancements);
 
   function setManual(field: keyof Pick<Player, 'bonusEvasion' | 'bonusHitPoints' | 'bonusStress' | 'bonusMajorThreshold' | 'bonusSevereThreshold'>, value: number) {
     if (!player) return;
@@ -196,10 +206,15 @@ export function CharacterDetail() {
             <div>
               <p className="font-semibold text-stone-700">
                 Evasão = {stats.evasion.base} (classe) {fmtSigned(stats.evasion.armor)} (armadura) {fmtSigned(stats.evasion.ancestry)} (ancestralidade){' '}
-                {fmtSigned(stats.evasion.subclassFoundation)} (fundação da subclasse) {fmtSigned(stats.evasion.manual)} (manual)
+                {fmtSigned(stats.evasion.subclass)} (subclasse) {fmtSigned(stats.evasion.advancements)} (avanços) {fmtSigned(stats.evasion.manual)} (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
-                PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.manual)} (manual)
+                PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.advancements)} (avanços){' '}
+                {fmtSigned(stats.hitPoints.manual)} (manual)
+              </p>
+              <p className="font-semibold text-stone-700 mt-1">
+                Stress = {fmtSigned(stats.stressSlots.ancestry)} (ancestralidade) {fmtSigned(stats.stressSlots.advancements)} (avanços) {fmtSigned(stats.stressSlots.manual)}{' '}
+                (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
                 Limiar Maior = {stats.majorThreshold.base} (base) {fmtSigned(stats.majorThreshold.level)} (nível) {fmtSigned(stats.majorThreshold.autoBonus)} (subclasse /
@@ -211,9 +226,9 @@ export function CharacterDetail() {
               </p>
             </div>
             <p className="text-stone-500">
-              O cálculo automático cobre classe, armadura, ancestralidade e a fundação da subclasse (sempre ativa assim que você escolhe a subclasse).
-              Bônus que exigem uma escolha do jogador (como a carta Vitality do domínio Blade, que deixa escolher 2 de 3 benefícios) ou dependem de um
-              traço que a ficha ainda não rastreia (como Proficiência ou Força) entram como ajuste manual abaixo.
+              O cálculo automático cobre classe, armadura, ancestralidade, subclasse (fundação sempre ativa; especialização e maestria só depois de
+              você registrar o avanço correspondente lá embaixo) e os avanços de nível já registrados. Bônus que exigem uma escolha específica do
+              jogador (como a carta Vitality do domínio Blade, que deixa escolher 2 de 3 benefícios) entram como ajuste manual abaixo.
             </p>
             {stats.reminders.length > 0 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1">
@@ -497,7 +512,150 @@ export function CharacterDetail() {
           </details>
         )}
       </Section>
+
+      {/* Avanços de nível */}
+      <AdvancementsSection
+        player={player}
+        canEdit={canEdit}
+        advancements={myAdvancements}
+        advancementOptions={rules.advancementOptions}
+        addAdvancement={addAdvancement}
+        removeAdvancement={removeAdvancement}
+        advError={advError}
+        setAdvError={setAdvError}
+      />
     </div>
+  );
+}
+
+function AdvancementsSection({
+  player,
+  canEdit,
+  advancements,
+  advancementOptions,
+  addAdvancement,
+  removeAdvancement,
+  advError,
+  setAdvError,
+}: {
+  player: Player;
+  canEdit: boolean;
+  advancements: CharacterAdvancement[];
+  advancementOptions: AdvancementOption[];
+  addAdvancement: (characterId: string, level: number, optionId: string, detail: string) => Promise<void>;
+  removeAdvancement: (characterId: string, advancementId: string) => Promise<void>;
+  advError: string;
+  setAdvError: (v: string) => void;
+}) {
+  const [newLevel, setNewLevel] = useState(Math.max(2, player.level));
+  const [newOptionId, setNewOptionId] = useState('');
+  const [newDetail, setNewDetail] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const newTier = tierForLevel(newLevel);
+  const optionsForTier = advancementOptions.filter((o) => o.minTier <= newTier);
+  const slotsUsedAtLevel = advancements.filter((a) => a.level === newLevel).reduce((sum, a) => sum + (advancementOptions.find((o) => o.id === a.optionId)?.slotCost ?? 1), 0);
+
+  const byLevel = new Map<number, typeof advancements>();
+  for (const a of advancements) {
+    if (!byLevel.has(a.level)) byLevel.set(a.level, []);
+    byLevel.get(a.level)!.push(a);
+  }
+  const levels = [...byLevel.keys()].sort((a, b) => a - b);
+
+  async function handleAdd() {
+    if (!newOptionId) {
+      setAdvError('Escolha uma opção de avanço.');
+      return;
+    }
+    setAdvError('');
+    setSaving(true);
+    await addAdvancement(player.id, newLevel, newOptionId, newDetail);
+    setSaving(false);
+    setNewOptionId('');
+    setNewDetail('');
+  }
+
+  return (
+    <Section title={`Avanços de Nível (${advancements.length})`}>
+      {levels.length === 0 && <p className="text-xs text-stone-400">Nenhum avanço registrado ainda.</p>}
+      <div className="space-y-3 mb-3">
+        {levels.map((level) => (
+          <div key={level}>
+            <p className="text-xs font-bold text-stone-700 mb-1">Nível {level}</p>
+            <div className="space-y-1">
+              {byLevel.get(level)!.map((a) => {
+                const option = advancementOptions.find((o) => o.id === a.optionId);
+                return (
+                  <div key={a.id} className="flex items-start justify-between gap-2 bg-stone-50 border border-stone-200 rounded-md px-2 py-1.5">
+                    <div>
+                      <p className="text-xs font-semibold text-stone-800">{option?.name ?? a.optionId}</p>
+                      {a.detail && <p className="text-xs text-stone-500">{a.detail}</p>}
+                    </div>
+                    {canEdit && (
+                      <button onClick={() => removeAdvancement(player.id, a.id)} className="text-xs text-red-600 hover:underline shrink-0">
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      {advError && <p className="text-xs text-red-600 mb-2">{advError}</p>}
+      {canEdit && (
+        <details className="text-xs">
+          <summary className="cursor-pointer font-semibold text-stone-600">Registrar avanço</summary>
+          <div className="mt-2 space-y-2 bg-stone-50 border border-stone-200 rounded-lg p-2">
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] text-stone-500 shrink-0">Nível</label>
+              <input
+                type="number"
+                min={2}
+                max={10}
+                value={newLevel}
+                onChange={(e) => setNewLevel(Math.max(2, Math.min(10, parseInt(e.target.value, 10) || 2)))}
+                className="w-16 border border-stone-300 rounded-md px-2 py-1 text-sm"
+              />
+              <span className="text-[11px] text-stone-400">Tier {newTier}</span>
+              {slotsUsedAtLevel >= 2 && <span className="text-[11px] text-amber-600">já tem {slotsUsedAtLevel} pontos de avanço marcados nesse nível (normalmente são 2)</span>}
+            </div>
+            <select value={newOptionId} onChange={(e) => setNewOptionId(e.target.value)} className={SELECT_CLASS}>
+              <option value="">Escolher opção...</option>
+              {optionsForTier.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name} {o.slotCost > 1 ? '(usa os 2 pontos)' : ''}
+                </option>
+              ))}
+            </select>
+            <textarea
+              value={newDetail}
+              onChange={(e) => setNewDetail(e.target.value)}
+              placeholder="Detalhe (opcional) — ex: quais traços, qual carta, qual classe do multiclasse..."
+              className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+              rows={2}
+            />
+            <SmallButtonInline onClick={handleAdd} disabled={saving}>
+              {saving ? 'Salvando...' : 'Registrar'}
+            </SmallButtonInline>
+          </div>
+        </details>
+      )}
+    </Section>
+  );
+}
+
+function SmallButtonInline({ children, onClick, disabled }: { children: React.ReactNode; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="px-3 py-1.5 rounded-md text-xs font-medium bg-violet-700 text-white hover:bg-violet-800 disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      {children}
+    </button>
   );
 }
 

@@ -1,8 +1,12 @@
-import type { Ancestry, Armor, DaggerClass, FeatureText, Subclass } from './rulesTypes';
+import type { Ancestry, Armor, CharacterAdvancement, DaggerClass, FeatureText, Subclass } from './rulesTypes';
 import type { Player } from './types';
 
 function signed(match: string): number {
   return parseInt(match.replace('−', '-'), 10);
+}
+
+function countAdvancement(advancements: CharacterAdvancement[], optionId: string): number {
+  return advancements.filter((a) => a.optionId === optionId).length;
 }
 
 function evasionModFromArmorFeature(feature: string | undefined): number {
@@ -11,7 +15,7 @@ function evasionModFromArmorFeature(feature: string | undefined): number {
   return m ? signed(m[1]) : 0;
 }
 
-/** "Gain a permanent +N bonus to your Evasion" — used for ancestry features and subclass foundation features. */
+/** "Gain a permanent +N bonus to your Evasion" — used for ancestry features and subclass tier features. */
 function permanentEvasionFromFeatures(features: FeatureText[] | undefined): number {
   if (!features) return 0;
   let total = 0;
@@ -76,21 +80,21 @@ export interface ThresholdBreakdown {
   source: 'armor' | 'unarmored' | 'bare-bones';
   base: number;
   level: number;
-  /** Subclass foundation feature bonus + ancestry bonus tied to Proficiency (e.g. Galapa's Shell). */
+  /** Subclass tier features (foundation always, specialization/mastery once taken via a logged advancement) + ancestry bonus tied to Proficiency (e.g. Galapa's Shell). */
   autoBonus: number;
   manual: number;
   total: number;
 }
 
 export interface DerivedStats {
-  evasion: { base: number; armor: number; ancestry: number; subclassFoundation: number; manual: number; total: number };
-  hitPoints: { base: number; ancestry: number; manual: number; total: number };
-  stressSlots: { ancestry: number; manual: number; total: number };
+  evasion: { base: number; armor: number; ancestry: number; subclass: number; advancements: number; manual: number; total: number };
+  hitPoints: { base: number; ancestry: number; advancements: number; manual: number; total: number };
+  stressSlots: { ancestry: number; advancements: number; manual: number; total: number };
   majorThreshold: ThresholdBreakdown;
   severeThreshold: ThresholdBreakdown;
   armorScore: number;
   armorScoreNote: string | null;
-  /** Permanent bonuses that exist in the rules text but can't be safely auto-applied (require a level-up choice not yet tracked, or depend on an untracked base trait like Proficiency/Strength). */
+  /** Permanent bonuses that exist in the rules text but can't be safely auto-applied (depend on an untracked base trait, or the relevant advancement hasn't been logged yet). */
   reminders: string[];
 }
 
@@ -101,25 +105,36 @@ export function deriveCharacterStats(
   selectedAncestry: Ancestry | undefined,
   selectedSubclass: Subclass | undefined,
   hasBareBones: boolean,
+  advancements: CharacterAdvancement[],
 ): DerivedStats {
+  const subclassCardCount = countAdvancement(advancements, 'upgraded-subclass-card');
+  const hasSpecialization = subclassCardCount >= 1;
+  const hasMastery = subclassCardCount >= 2;
+
+  const subclassTierFeatures: FeatureText[] = selectedSubclass
+    ? [...selectedSubclass.foundation, ...(hasSpecialization ? selectedSubclass.specialization : []), ...(hasMastery ? selectedSubclass.mastery : [])]
+    : [];
+
   const evasionBase = selectedClass?.startingEvasion ?? 0;
   const evasionArmor = evasionModFromArmorFeature(selectedArmor?.feature);
   const evasionAncestry = permanentEvasionFromFeatures(selectedAncestry?.features);
-  // Foundation features are always active once a subclass is chosen — no level-up choice required.
-  const evasionSubclass = permanentEvasionFromFeatures(selectedSubclass?.foundation);
+  const evasionSubclass = permanentEvasionFromFeatures(subclassTierFeatures);
+  const evasionAdvancements = countAdvancement(advancements, 'raise-evasion');
   const evasionManual = player.bonusEvasion ?? 0;
 
   const hpBase = selectedClass?.startingHitPoints ?? 0;
   const hpAncestry = ancestrySlotBonus(selectedAncestry, 'Hit Point');
+  const hpAdvancements = countAdvancement(advancements, 'hit-point-slot');
   const hpManual = player.bonusHitPoints ?? 0;
 
   const stressAncestry = ancestrySlotBonus(selectedAncestry, 'Stress');
+  const stressAdvancements = countAdvancement(advancements, 'stress-slot');
   const stressManual = player.bonusStress ?? 0;
 
   const majorManual = player.bonusMajorThreshold ?? 0;
   const severeManual = player.bonusSevereThreshold ?? 0;
   const proficiency = player.proficiency ?? 1;
-  const subclassThresholds = permanentThresholdBonusFromFeatures(selectedSubclass?.foundation);
+  const subclassThresholds = permanentThresholdBonusFromFeatures(subclassTierFeatures);
   const ancestryThresholdBonus = ancestryProficiencyThresholdBonus(selectedAncestry, proficiency);
   const bonusThresholdMajor = subclassThresholds.major + ancestryThresholdBonus;
   const bonusThresholdSevere = subclassThresholds.severe + ancestryThresholdBonus;
@@ -201,20 +216,32 @@ export function deriveCharacterStats(
     }
   }
   if (selectedSubclass) {
-    for (const tierName of ['specialization', 'mastery'] as const) {
-      for (const f of selectedSubclass[tierName]) {
+    const tiersToCheck: Array<{ key: 'specialization' | 'mastery'; unlocked: boolean; label: string }> = [
+      { key: 'specialization', unlocked: hasSpecialization, label: 'especialização' },
+      { key: 'mastery', unlocked: hasMastery, label: 'maestria' },
+    ];
+    for (const { key, unlocked, label } of tiersToCheck) {
+      if (unlocked) continue;
+      for (const f of selectedSubclass[key]) {
         if (/permanent\s+[+−]\d+\s+bonus to your (damage thresholds|Evasion|Severe damage threshold)/i.test(f.text)) {
-          const label = tierName === 'specialization' ? 'especialização' : 'maestria';
-          reminders.push(`${selectedSubclass.name} (${label}, precisa ter sido pega ao subir de nível) — ${f.name}: ${f.text}`);
+          reminders.push(`${selectedSubclass.name} (${label}, registre o avanço "Carta de subclasse melhorada" ao subir de nível para ativar) — ${f.name}: ${f.text}`);
         }
       }
     }
   }
 
   return {
-    evasion: { base: evasionBase, armor: evasionArmor, ancestry: evasionAncestry, subclassFoundation: evasionSubclass, manual: evasionManual, total: evasionBase + evasionArmor + evasionAncestry + evasionSubclass + evasionManual },
-    hitPoints: { base: hpBase, ancestry: hpAncestry, manual: hpManual, total: hpBase + hpAncestry + hpManual },
-    stressSlots: { ancestry: stressAncestry, manual: stressManual, total: stressAncestry + stressManual },
+    evasion: {
+      base: evasionBase,
+      armor: evasionArmor,
+      ancestry: evasionAncestry,
+      subclass: evasionSubclass,
+      advancements: evasionAdvancements,
+      manual: evasionManual,
+      total: evasionBase + evasionArmor + evasionAncestry + evasionSubclass + evasionAdvancements + evasionManual,
+    },
+    hitPoints: { base: hpBase, ancestry: hpAncestry, advancements: hpAdvancements, manual: hpManual, total: hpBase + hpAncestry + hpAdvancements + hpManual },
+    stressSlots: { ancestry: stressAncestry, advancements: stressAdvancements, manual: stressManual, total: stressAncestry + stressAdvancements + stressManual },
     majorThreshold,
     severeThreshold,
     armorScore,

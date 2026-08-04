@@ -95,6 +95,23 @@ export interface CharacterDomainCard {
   inLoadout: boolean;
 }
 
+export interface AdvancementOption {
+  id: string;
+  name: string;
+  slotCost: number;
+  description: string;
+  minTier: number;
+}
+
+export interface CharacterAdvancement {
+  id: string;
+  characterId: string;
+  level: number;
+  optionId: string;
+  detail: string;
+  createdAt: string;
+}
+
 export interface DaggerheartRules {
   domains: Domain[];
   classes: DaggerClass[];
@@ -104,4 +121,5 @@ export interface DaggerheartRules {
   communities: Community[];
   weapons: Weapon[];
   armors: Armor[];
+  advancementOptions: AdvancementOption[];
 }
