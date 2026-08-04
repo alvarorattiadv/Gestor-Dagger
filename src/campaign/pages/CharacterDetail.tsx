@@ -123,16 +123,37 @@ export function CharacterDetail() {
       </div>
 
       {canEdit && (
-        <div className="bg-white border border-stone-200 rounded-xl p-3 flex items-center gap-3">
-          <label className="text-xs font-medium text-stone-600 shrink-0">Nível</label>
-          <input
-            type="number"
-            min={1}
-            max={10}
-            value={player.level}
-            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, level: Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)) }))}
-            className="w-20 border border-stone-300 rounded-md px-2 py-1 text-sm"
-          />
+        <div className="bg-white border border-stone-200 rounded-xl p-3 space-y-3">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-stone-600 shrink-0">Nível</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={player.level}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, level: Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)) }))}
+              className="w-20 border border-stone-300 rounded-md px-2 py-1 text-sm"
+            />
+            <label className="text-xs font-medium text-stone-600 shrink-0 ml-2">Proficiência</label>
+            <input
+              type="number"
+              min={1}
+              value={player.proficiency}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, proficiency: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+              className="w-20 border border-stone-300 rounded-md px-2 py-1 text-sm"
+            />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-stone-600 mb-1">Traços</p>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              <TraitInput label="Agilidade" value={player.traitAgility ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitAgility: v }))} />
+              <TraitInput label="Força" value={player.traitStrength ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitStrength: v }))} />
+              <TraitInput label="Finesse" value={player.traitFinesse ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitFinesse: v }))} />
+              <TraitInput label="Instinto" value={player.traitInstinct ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitInstinct: v }))} />
+              <TraitInput label="Presença" value={player.traitPresence ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitPresence: v }))} />
+              <TraitInput label="Conhecimento" value={player.traitKnowledge ?? 0} onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, traitKnowledge: v }))} />
+            </div>
+          </div>
         </div>
       )}
 
@@ -163,12 +184,12 @@ export function CharacterDetail() {
                 PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.manual)} (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
-                Limiar Maior = {stats.majorThreshold.base} (base) {fmtSigned(stats.majorThreshold.level)} (nível) {fmtSigned(stats.majorThreshold.subclassFoundation)} (fundação
-                da subclasse) {fmtSigned(stats.majorThreshold.manual)} (manual)
+                Limiar Maior = {stats.majorThreshold.base} (base) {fmtSigned(stats.majorThreshold.level)} (nível) {fmtSigned(stats.majorThreshold.autoBonus)} (subclasse /
+                ancestralidade) {fmtSigned(stats.majorThreshold.manual)} (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
-                Limiar Severo = {stats.severeThreshold.base} (base) {fmtSigned(stats.severeThreshold.level)} (nível) {fmtSigned(stats.severeThreshold.subclassFoundation)}{' '}
-                (fundação da subclasse) {fmtSigned(stats.severeThreshold.manual)} (manual)
+                Limiar Severo = {stats.severeThreshold.base} (base) {fmtSigned(stats.severeThreshold.level)} (nível) {fmtSigned(stats.severeThreshold.autoBonus)} (subclasse /
+                ancestralidade) {fmtSigned(stats.severeThreshold.manual)} (manual)
               </p>
             </div>
             <p className="text-stone-500">
@@ -491,6 +512,20 @@ function ManualAdjustInput({ label, value, onChange }: { label: string; value: n
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
         className="border border-stone-300 rounded-md px-2 py-1 text-sm w-full"
+      />
+    </label>
+  );
+}
+
+function TraitInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="flex flex-col items-center gap-0.5 bg-stone-50 border border-stone-200 rounded-md py-1.5">
+      <span className="text-[10px] text-stone-500">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+        className="w-12 text-center border-0 bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
       />
     </label>
   );

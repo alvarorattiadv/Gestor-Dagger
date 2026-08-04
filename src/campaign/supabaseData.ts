@@ -117,6 +117,13 @@ function playerFromRow(row: any): Player {
     bonusStress: row.bonus_stress ?? 0,
     bonusMajorThreshold: row.bonus_major_threshold ?? 0,
     bonusSevereThreshold: row.bonus_severe_threshold ?? 0,
+    traitAgility: row.trait_agility ?? 0,
+    traitStrength: row.trait_strength ?? 0,
+    traitFinesse: row.trait_finesse ?? 0,
+    traitInstinct: row.trait_instinct ?? 0,
+    traitPresence: row.trait_presence ?? 0,
+    traitKnowledge: row.trait_knowledge ?? 0,
+    proficiency: row.proficiency ?? 1,
   };
 }
 
@@ -410,6 +417,13 @@ export async function dbUpsertPlayer(p: Player) {
     bonus_stress: p.bonusStress ?? 0,
     bonus_major_threshold: p.bonusMajorThreshold ?? 0,
     bonus_severe_threshold: p.bonusSevereThreshold ?? 0,
+    trait_agility: p.traitAgility ?? 0,
+    trait_strength: p.traitStrength ?? 0,
+    trait_finesse: p.traitFinesse ?? 0,
+    trait_instinct: p.traitInstinct ?? 0,
+    trait_presence: p.traitPresence ?? 0,
+    trait_knowledge: p.traitKnowledge ?? 0,
+    proficiency: p.proficiency,
   });
   if (error) logSyncError('upsert player', error);
 }

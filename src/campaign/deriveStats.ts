@@ -50,6 +50,13 @@ function ancestrySlotBonus(ancestry: Ancestry | undefined, kind: 'Hit Point' | '
   return total;
 }
 
+/** Galapa's "Shell": bonus to damage thresholds equal to your Proficiency (both major and severe). */
+function ancestryProficiencyThresholdBonus(ancestry: Ancestry | undefined, proficiency: number): number {
+  if (!ancestry) return 0;
+  const hasIt = ancestry.features.some((f) => /bonus to your damage thresholds equal to your Proficiency/i.test(f.text));
+  return hasIt ? proficiency : 0;
+}
+
 export function tierForLevel(level: number): number {
   if (level <= 1) return 1;
   if (level <= 4) return 2;
@@ -69,7 +76,8 @@ export interface ThresholdBreakdown {
   source: 'armor' | 'unarmored' | 'bare-bones';
   base: number;
   level: number;
-  subclassFoundation: number;
+  /** Subclass foundation feature bonus + ancestry bonus tied to Proficiency (e.g. Galapa's Shell). */
+  autoBonus: number;
   manual: number;
   total: number;
 }
@@ -110,7 +118,11 @@ export function deriveCharacterStats(
 
   const majorManual = player.bonusMajorThreshold ?? 0;
   const severeManual = player.bonusSevereThreshold ?? 0;
+  const proficiency = player.proficiency ?? 1;
   const subclassThresholds = permanentThresholdBonusFromFeatures(selectedSubclass?.foundation);
+  const ancestryThresholdBonus = ancestryProficiencyThresholdBonus(selectedAncestry, proficiency);
+  const bonusThresholdMajor = subclassThresholds.major + ancestryThresholdBonus;
+  const bonusThresholdSevere = subclassThresholds.severe + ancestryThresholdBonus;
   const useBareBones = !selectedArmor && hasBareBones;
   const bareBonesTable = BARE_BONES_THRESHOLDS[tierForLevel(player.level)];
 
@@ -124,56 +136,56 @@ export function deriveCharacterStats(
       source: 'armor',
       base: selectedArmor.majorThreshold,
       level: player.level,
-      subclassFoundation: subclassThresholds.major,
+      autoBonus: bonusThresholdMajor,
       manual: majorManual,
-      total: selectedArmor.majorThreshold + player.level + subclassThresholds.major + majorManual,
+      total: selectedArmor.majorThreshold + player.level + bonusThresholdMajor + majorManual,
     };
     severeThreshold = {
       source: 'armor',
       base: selectedArmor.severeThreshold,
       level: player.level,
-      subclassFoundation: subclassThresholds.severe,
+      autoBonus: bonusThresholdSevere,
       manual: severeManual,
-      total: selectedArmor.severeThreshold + player.level + subclassThresholds.severe + severeManual,
+      total: selectedArmor.severeThreshold + player.level + bonusThresholdSevere + severeManual,
     };
     armorScore = selectedArmor.baseScore;
   } else if (useBareBones) {
-    // Bare Bones (Valor, level 1): fixed per-tier base instead of armor's printed thresholds — level and subclass bonuses still apply on top, same as armor.
+    // Bare Bones (Valor, level 1): fixed per-tier base instead of armor's printed thresholds — level and other bonuses still apply on top, same as armor.
     majorThreshold = {
       source: 'bare-bones',
       base: bareBonesTable.major,
       level: player.level,
-      subclassFoundation: subclassThresholds.major,
+      autoBonus: bonusThresholdMajor,
       manual: majorManual,
-      total: bareBonesTable.major + player.level + subclassThresholds.major + majorManual,
+      total: bareBonesTable.major + player.level + bonusThresholdMajor + majorManual,
     };
     severeThreshold = {
       source: 'bare-bones',
       base: bareBonesTable.severe,
       level: player.level,
-      subclassFoundation: subclassThresholds.severe,
+      autoBonus: bonusThresholdSevere,
       manual: severeManual,
-      total: bareBonesTable.severe + player.level + subclassThresholds.severe + severeManual,
+      total: bareBonesTable.severe + player.level + bonusThresholdSevere + severeManual,
     };
-    armorScore = 3;
-    armorScoreNote = 'Bare Bones: Score base 3 + Força (some manualmente — Força não é rastreada na ficha ainda).';
+    armorScore = 3 + (player.traitStrength ?? 0);
+    armorScoreNote = `Bare Bones: Score = 3 (base) + ${player.traitStrength ?? 0} (Força).`;
   } else {
     // Generic unarmored rule: Armor Score 0, Major threshold = level, Severe threshold = level x2.
     majorThreshold = {
       source: 'unarmored',
       base: 0,
       level: player.level,
-      subclassFoundation: subclassThresholds.major,
+      autoBonus: bonusThresholdMajor,
       manual: majorManual,
-      total: player.level + subclassThresholds.major + majorManual,
+      total: player.level + bonusThresholdMajor + majorManual,
     };
     severeThreshold = {
       source: 'unarmored',
       base: 0,
       level: player.level,
-      subclassFoundation: subclassThresholds.severe,
+      autoBonus: bonusThresholdSevere,
       manual: severeManual,
-      total: player.level * 2 + subclassThresholds.severe + severeManual,
+      total: player.level * 2 + bonusThresholdSevere + severeManual,
     };
     armorScore = 0;
   }
@@ -181,7 +193,9 @@ export function deriveCharacterStats(
   const reminders: string[] = [];
   if (selectedAncestry) {
     for (const f of selectedAncestry.features) {
-      if (/damage threshold/i.test(f.text) && !/permanent\s+[+−]\d+\s+bonus to your damage thresholds/i.test(f.text)) {
+      const alreadyHandled =
+        /permanent\s+[+−]\d+\s+bonus to your damage thresholds/i.test(f.text) || /bonus to your damage thresholds equal to your Proficiency/i.test(f.text);
+      if (/damage threshold/i.test(f.text) && !alreadyHandled) {
         reminders.push(`Ancestralidade (${selectedAncestry.name}) — ${f.name}: ${f.text}`);
       }
     }

@@ -146,6 +146,13 @@ export interface Player {
   bonusStress?: number;
   bonusMajorThreshold?: number;
   bonusSevereThreshold?: number;
+  traitAgility?: number;
+  traitStrength?: number;
+  traitFinesse?: number;
+  traitInstinct?: number;
+  traitPresence?: number;
+  traitKnowledge?: number;
+  proficiency: number;
 }
 
 export interface PartyResources {
