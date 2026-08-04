@@ -634,12 +634,15 @@ export function CharacterDetail() {
         advancementOptions={rules.advancementOptions}
         addAdvancement={addAdvancement}
         removeAdvancement={removeAdvancement}
+        updatePlayer={updatePlayer}
         advError={advError}
         setAdvError={setAdvError}
       />
     </div>
   );
 }
+
+const ACHIEVEMENT_LEVELS = [2, 5, 8];
 
 function AdvancementsSection({
   player,
@@ -648,6 +651,7 @@ function AdvancementsSection({
   advancementOptions,
   addAdvancement,
   removeAdvancement,
+  updatePlayer,
   advError,
   setAdvError,
 }: {
@@ -657,17 +661,22 @@ function AdvancementsSection({
   advancementOptions: AdvancementOption[];
   addAdvancement: (characterId: string, level: number, optionId: string, detail: string) => Promise<void>;
   removeAdvancement: (characterId: string, advancementId: string) => Promise<void>;
+  updatePlayer: (id: string, updater: (p: Player) => Player) => void;
   advError: string;
   setAdvError: (v: string) => void;
 }) {
   const [newLevel, setNewLevel] = useState(Math.max(2, player.level));
-  const [newOptionId, setNewOptionId] = useState('');
-  const [newDetail, setNewDetail] = useState('');
+  const [pick1, setPick1] = useState('');
+  const [detail1, setDetail1] = useState('');
+  const [pick2, setPick2] = useState('');
+  const [detail2, setDetail2] = useState('');
   const [saving, setSaving] = useState(false);
 
   const newTier = tierForLevel(newLevel);
   const optionsForTier = advancementOptions.filter((o) => o.minTier <= newTier);
-  const slotsUsedAtLevel = advancements.filter((a) => a.level === newLevel).reduce((sum, a) => sum + (advancementOptions.find((o) => o.id === a.optionId)?.slotCost ?? 1), 0);
+  const pick1Option = advancementOptions.find((o) => o.id === pick1);
+  const pick1UsesBoth = (pick1Option?.slotCost ?? 1) >= 2;
+  const isAchievementLevel = ACHIEVEMENT_LEVELS.includes(newLevel);
 
   const byLevel = new Map<number, typeof advancements>();
   for (const a of advancements) {
@@ -676,17 +685,32 @@ function AdvancementsSection({
   }
   const levels = [...byLevel.keys()].sort((a, b) => a - b);
 
+  function handleApplyAchievement() {
+    updatePlayer(player.id, (p) => ({
+      ...p,
+      proficiency: (p.proficiency ?? 1) + 1,
+      experiences: [...(p.experiences ?? []), { name: '', modifier: 2 }],
+    }));
+  }
+
   async function handleAdd() {
-    if (!newOptionId) {
-      setAdvError('Escolha uma opção de avanço.');
+    if (!pick1 && !pick2) {
+      setAdvError('Escolha pelo menos um avanço.');
+      return;
+    }
+    if (!pick1UsesBoth && pick2 && pick1 === pick2) {
+      setAdvError('As duas escolhas do nível precisam ser diferentes.');
       return;
     }
     setAdvError('');
     setSaving(true);
-    await addAdvancement(player.id, newLevel, newOptionId, newDetail);
+    if (pick1) await addAdvancement(player.id, newLevel, pick1, detail1);
+    if (!pick1UsesBoth && pick2) await addAdvancement(player.id, newLevel, pick2, detail2);
     setSaving(false);
-    setNewOptionId('');
-    setNewDetail('');
+    setPick1('');
+    setDetail1('');
+    setPick2('');
+    setDetail2('');
   }
 
   return (
@@ -695,7 +719,10 @@ function AdvancementsSection({
       <div className="space-y-3 mb-3">
         {levels.map((level) => (
           <div key={level}>
-            <p className="text-xs font-bold text-stone-700 mb-1">Nível {level}</p>
+            <p className="text-xs font-bold text-stone-700 mb-1">
+              Nível {level}
+              {ACHIEVEMENT_LEVELS.includes(level) && <span className="font-normal text-stone-400"> — +1 Proficiência e +1 Experiência automáticos (não contam como escolha)</span>}
+            </p>
             <div className="space-y-1">
               {byLevel.get(level)!.map((a) => {
                 const option = advancementOptions.find((o) => o.id === a.optionId);
@@ -720,8 +747,8 @@ function AdvancementsSection({
       {advError && <p className="text-xs text-red-600 mb-2">{advError}</p>}
       {canEdit && (
         <details className="text-xs">
-          <summary className="cursor-pointer font-semibold text-stone-600">Registrar avanço</summary>
-          <div className="mt-2 space-y-2 bg-stone-50 border border-stone-200 rounded-lg p-2">
+          <summary className="cursor-pointer font-semibold text-stone-600">Registrar avanços de um nível</summary>
+          <div className="mt-2 space-y-3 bg-stone-50 border border-stone-200 rounded-lg p-2">
             <div className="flex items-center gap-2">
               <label className="text-[11px] text-stone-500 shrink-0">Nível</label>
               <input
@@ -733,23 +760,62 @@ function AdvancementsSection({
                 className="w-16 border border-stone-300 rounded-md px-2 py-1 text-sm"
               />
               <span className="text-[11px] text-stone-400">Tier {newTier}</span>
-              {slotsUsedAtLevel >= 2 && <span className="text-[11px] text-amber-600">já tem {slotsUsedAtLevel} pontos de avanço marcados nesse nível (normalmente são 2)</span>}
             </div>
-            <select value={newOptionId} onChange={(e) => setNewOptionId(e.target.value)} className={SELECT_CLASS}>
-              <option value="">Escolher opção...</option>
-              {optionsForTier.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} {o.slotCost > 1 ? '(usa os 2 pontos)' : ''}
-                </option>
-              ))}
-            </select>
-            <textarea
-              value={newDetail}
-              onChange={(e) => setNewDetail(e.target.value)}
-              placeholder="Detalhe (opcional) — ex: quais traços, qual carta, qual classe do multiclasse..."
-              className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
-              rows={2}
-            />
+
+            {isAchievementLevel && (
+              <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between gap-2">
+                <p className="text-[11px] text-amber-800">
+                  Ganho automático do nível {newLevel}: +1 Proficiência (atual {player.proficiency ?? 1} → {(player.proficiency ?? 1) + 1}) e uma Experiência nova. Não usa
+                  nenhuma das 2 escolhas abaixo.
+                </p>
+                <SmallButtonInline onClick={handleApplyAchievement}>Aplicar</SmallButtonInline>
+              </div>
+            )}
+
+            <div className="space-y-1.5 border-t border-stone-200 pt-2">
+              <p className="text-[11px] font-semibold text-stone-600">Escolha 1 de 2</p>
+              <select value={pick1} onChange={(e) => setPick1(e.target.value)} className={SELECT_CLASS}>
+                <option value="">Escolher opção...</option>
+                {optionsForTier.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} {o.slotCost > 1 ? '(usa as 2 escolhas)' : ''}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                value={detail1}
+                onChange={(e) => setDetail1(e.target.value)}
+                placeholder="Detalhe (opcional) — ex: quais traços, qual carta, qual classe do multiclasse..."
+                className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                rows={2}
+              />
+            </div>
+
+            {pick1UsesBoth ? (
+              <p className="text-[11px] text-stone-400 italic">"{pick1Option?.name}" usa as duas escolhas deste nível — nada mais pra escolher aqui.</p>
+            ) : (
+              <div className="space-y-1.5 border-t border-stone-200 pt-2">
+                <p className="text-[11px] font-semibold text-stone-600">Escolha 2 de 2</p>
+                <select value={pick2} onChange={(e) => setPick2(e.target.value)} className={SELECT_CLASS}>
+                  <option value="">Escolher opção...</option>
+                  {optionsForTier
+                    .filter((o) => o.id !== pick1)
+                    .map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name} {o.slotCost > 1 ? '(usa as 2 escolhas)' : ''}
+                      </option>
+                    ))}
+                </select>
+                <textarea
+                  value={detail2}
+                  onChange={(e) => setDetail2(e.target.value)}
+                  placeholder="Detalhe (opcional)"
+                  className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                  rows={2}
+                />
+              </div>
+            )}
+
             <SmallButtonInline onClick={handleAdd} disabled={saving}>
               {saving ? 'Salvando...' : 'Registrar'}
             </SmallButtonInline>
