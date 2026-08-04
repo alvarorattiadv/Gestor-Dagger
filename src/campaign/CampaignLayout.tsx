@@ -5,6 +5,7 @@ import { useRoleStore } from './role';
 import { downloadCampaignJson } from './io';
 import { SmallButton } from './components/SmallButton';
 import { RoleGate } from './components/RoleGate';
+import { DiceRoller } from './components/DiceRoller';
 
 const AUTO_SYNC_INTERVAL_MS = 10 * 60 * 1000;
 
@@ -123,6 +124,7 @@ export function CampaignLayout() {
       <main className="max-w-6xl mx-auto px-4 py-6">
         <Outlet />
       </main>
+      <DiceRoller />
     </div>
     </RoleGate>
   );
