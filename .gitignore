@@ -17,6 +17,9 @@ dist-ssr
 
 .claude/settings.local.json
 
+# Rulebook-derived data (not SRD, not ours to publish) — run locally, never commit
+*.LOCAL.sql
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
