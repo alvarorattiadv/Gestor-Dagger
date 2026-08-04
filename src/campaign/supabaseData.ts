@@ -112,6 +112,11 @@ function playerFromRow(row: any): Player {
     primaryWeaponId: row.primary_weapon_id ?? undefined,
     secondaryWeaponId: row.secondary_weapon_id ?? undefined,
     armorId: row.armor_id ?? undefined,
+    bonusEvasion: row.bonus_evasion ?? 0,
+    bonusHitPoints: row.bonus_hit_points ?? 0,
+    bonusStress: row.bonus_stress ?? 0,
+    bonusMajorThreshold: row.bonus_major_threshold ?? 0,
+    bonusSevereThreshold: row.bonus_severe_threshold ?? 0,
   };
 }
 
@@ -400,6 +405,11 @@ export async function dbUpsertPlayer(p: Player) {
     primary_weapon_id: p.primaryWeaponId ?? null,
     secondary_weapon_id: p.secondaryWeaponId ?? null,
     armor_id: p.armorId ?? null,
+    bonus_evasion: p.bonusEvasion ?? 0,
+    bonus_hit_points: p.bonusHitPoints ?? 0,
+    bonus_stress: p.bonusStress ?? 0,
+    bonus_major_threshold: p.bonusMajorThreshold ?? 0,
+    bonus_severe_threshold: p.bonusSevereThreshold ?? 0,
   });
   if (error) logSyncError('upsert player', error);
 }

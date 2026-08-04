@@ -4,6 +4,8 @@ import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore } from '../rulesStore';
 import type { FeatureText } from '../rulesTypes';
+import { deriveCharacterStats } from '../deriveStats';
+import type { Player } from '../types';
 
 function tierForLevel(level: number): number {
   if (level <= 1) return 1;
@@ -99,6 +101,12 @@ export function CharacterDetail() {
   const selectedArmor = rules.armors.find((a) => a.id === player.armorId);
   const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
+  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry);
+
+  function setManual(field: keyof Pick<Player, 'bonusEvasion' | 'bonusHitPoints' | 'bonusStress' | 'bonusMajorThreshold' | 'bonusSevereThreshold'>, value: number) {
+    if (!player) return;
+    updatePlayer(player.id, (p) => ({ ...p, [field]: value }));
+  }
 
   return (
     <div className="space-y-5 max-w-3xl">
@@ -133,6 +141,45 @@ export function CharacterDetail() {
           />
         </div>
       )}
+
+      {/* Resumo calculado */}
+      <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+        <h3 className="text-sm font-bold text-violet-900 mb-3">Resumo</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+          <StatTile label="Evasão" value={stats.evasion.total} />
+          <StatTile label="Pontos de Vida" value={stats.hitPoints.total} />
+          <StatTile label="Stress" value={stats.stressSlots.total} />
+          <StatTile label="Armadura" value={stats.armorScore ?? '—'} />
+        </div>
+        {(stats.majorThreshold || stats.severeThreshold) && (
+          <p className="text-xs text-stone-600 mb-3">
+            Limiares de dano — Maior: <strong>{stats.majorThreshold?.total ?? '—'}</strong>, Severo: <strong>{stats.severeThreshold?.total ?? '—'}</strong>
+          </p>
+        )}
+        <details className="text-xs text-stone-600">
+          <summary className="cursor-pointer font-semibold text-violet-800">Como isso foi calculado / ajustes manuais</summary>
+          <div className="mt-2 space-y-3">
+            <div>
+              <p className="font-semibold text-stone-700">Evasão = {stats.evasion.base} (classe) {fmtSigned(stats.evasion.armor)} (armadura) {fmtSigned(stats.evasion.ancestry)} (ancestralidade) {fmtSigned(stats.evasion.manual)} (manual)</p>
+              <p className="font-semibold text-stone-700 mt-1">PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.manual)} (manual)</p>
+            </div>
+            <p className="text-stone-500">
+              O cálculo automático cobre classe, armadura e ancestralidade. Cartas de domínio que dão bônus permanentes (ex: Vitality, do domínio
+              Blade, deixa escolher 2 de 3 benefícios ao pegar a carta) exigem uma escolha do jogador — por isso entram como ajuste manual abaixo, não
+              automático.
+            </p>
+            {canEdit && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                <ManualAdjustInput label="Evasão manual" value={player.bonusEvasion ?? 0} onChange={(v) => setManual('bonusEvasion', v)} />
+                <ManualAdjustInput label="PV manual" value={player.bonusHitPoints ?? 0} onChange={(v) => setManual('bonusHitPoints', v)} />
+                <ManualAdjustInput label="Stress manual" value={player.bonusStress ?? 0} onChange={(v) => setManual('bonusStress', v)} />
+                <ManualAdjustInput label="Limiar Maior manual" value={player.bonusMajorThreshold ?? 0} onChange={(v) => setManual('bonusMajorThreshold', v)} />
+                <ManualAdjustInput label="Limiar Severo manual" value={player.bonusSevereThreshold ?? 0} onChange={(v) => setManual('bonusSevereThreshold', v)} />
+              </div>
+            )}
+          </div>
+        </details>
+      </div>
 
       {/* Ancestralidade */}
       <Section title="Ancestralidade">
@@ -400,5 +447,33 @@ function FeatureRow({ feature }: { feature: FeatureText }) {
     <p className="text-xs text-stone-600">
       <strong className="text-stone-800">{feature.name}:</strong> {feature.text}
     </p>
+  );
+}
+
+function fmtSigned(n: number): string {
+  if (n === 0) return '+0';
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+function StatTile({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="bg-white border border-violet-200 rounded-lg p-2 text-center">
+      <div className="text-lg font-bold text-stone-900">{value}</div>
+      <div className="text-[11px] text-stone-500">{label}</div>
+    </div>
+  );
+}
+
+function ManualAdjustInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-[11px] text-stone-500">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+        className="border border-stone-300 rounded-md px-2 py-1 text-sm w-full"
+      />
+    </label>
   );
 }

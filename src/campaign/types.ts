@@ -141,6 +141,11 @@ export interface Player {
   primaryWeaponId?: string;
   secondaryWeaponId?: string;
   armorId?: string;
+  bonusEvasion?: number;
+  bonusHitPoints?: number;
+  bonusStress?: number;
+  bonusMajorThreshold?: number;
+  bonusSevereThreshold?: number;
 }
 
 export interface PartyResources {
