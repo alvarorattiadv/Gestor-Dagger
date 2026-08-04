@@ -125,17 +125,22 @@ export interface ClaimResult {
   error: string | null;
 }
 
-/** Every claimed domain card in the campaign, mapped to which character holds it. */
-export async function fetchClaimedDomainCards(): Promise<Record<string, string>> {
-  const { data, error } = await supabase.from('character_domain_cards').select('domain_card_id, character_id');
+export interface ClaimedCardInfo {
+  characterId: string;
+  inLoadout: boolean;
+}
+
+/** Every claimed domain card in the campaign, mapped to which character holds it and whether it's active (loadout) or vaulted. */
+export async function fetchClaimedDomainCards(): Promise<Record<string, ClaimedCardInfo>> {
+  const { data, error } = await supabase.from('character_domain_cards').select('domain_card_id, character_id, in_loadout');
   if (error) throw new Error(error.message);
-  const map: Record<string, string> = {};
-  for (const row of data ?? []) map[row.domain_card_id] = row.character_id;
+  const map: Record<string, ClaimedCardInfo> = {};
+  for (const row of data ?? []) map[row.domain_card_id] = { characterId: row.character_id, inLoadout: row.in_loadout };
   return map;
 }
 
-export async function claimDomainCard(characterId: string, domainCardId: string): Promise<ClaimResult> {
-  const { error } = await supabase.from('character_domain_cards').insert({ character_id: characterId, domain_card_id: domainCardId });
+export async function claimDomainCard(characterId: string, domainCardId: string, inLoadout: boolean): Promise<ClaimResult> {
+  const { error } = await supabase.from('character_domain_cards').insert({ character_id: characterId, domain_card_id: domainCardId, in_loadout: inLoadout });
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'Essa carta já foi escolhida por outro personagem.' };
     return { ok: false, error: error.message };
@@ -145,4 +150,8 @@ export async function claimDomainCard(characterId: string, domainCardId: string)
 
 export async function releaseDomainCard(characterId: string, domainCardId: string): Promise<void> {
   await supabase.from('character_domain_cards').delete().eq('character_id', characterId).eq('domain_card_id', domainCardId);
+}
+
+export async function setDomainCardLoadout(characterId: string, domainCardId: string, inLoadout: boolean): Promise<void> {
+  await supabase.from('character_domain_cards').update({ in_loadout: inLoadout }).eq('character_id', characterId).eq('domain_card_id', domainCardId);
 }

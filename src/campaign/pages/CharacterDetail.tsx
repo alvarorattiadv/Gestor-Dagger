@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
-import { useRulesStore } from '../rulesStore';
+import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
 import type { FeatureText } from '../rulesTypes';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
@@ -23,6 +23,7 @@ export function CharacterDetail() {
   const claimedCards = useRulesStore((s) => s.claimedCards);
   const claimCard = useRulesStore((s) => s.claimCard);
   const releaseCard = useRulesStore((s) => s.releaseCard);
+  const setCardLoadout = useRulesStore((s) => s.setCardLoadout);
   const [cardError, setCardError] = useState('');
   const [busyCardId, setBusyCardId] = useState<string | null>(null);
 
@@ -61,14 +62,19 @@ export function CharacterDetail() {
     .filter((c) => classDomains.includes(c.domain) && c.level <= player.level)
     .sort((a, b) => a.level - b.level || a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
 
-  const myCardIds = new Set(Object.entries(claimedCards).filter(([, charId]) => charId === player.id).map(([cardId]) => cardId));
+  const myCardIds = new Set(
+    Object.entries(claimedCards)
+      .filter(([, info]) => info.characterId === player.id)
+      .map(([cardId]) => cardId),
+  );
   const myCards = rules.domainCards.filter((c) => myCardIds.has(c.id));
+  const activeCardCount = myCards.filter((c) => claimedCards[c.id]?.inLoadout).length;
 
   async function handleClaim(cardId: string) {
     if (!player) return;
     setCardError('');
     setBusyCardId(cardId);
-    const result = await claimCard(player.id, cardId);
+    const result = await claimCard(player.id, cardId, activeCardCount < MAX_LOADOUT_CARDS);
     setBusyCardId(null);
     if (!result.ok && result.error) setCardError(result.error);
   }
@@ -77,6 +83,18 @@ export function CharacterDetail() {
     if (!player) return;
     setBusyCardId(cardId);
     await releaseCard(player.id, cardId);
+    setBusyCardId(null);
+  }
+
+  async function handleToggleLoadout(cardId: string, nextInLoadout: boolean) {
+    if (!player) return;
+    if (nextInLoadout && activeCardCount >= MAX_LOADOUT_CARDS) {
+      setCardError(`Só é possível ter ${MAX_LOADOUT_CARDS} cartas ativas ao mesmo tempo. Mande outra pro cofre primeiro.`);
+      return;
+    }
+    setCardError('');
+    setBusyCardId(cardId);
+    await setCardLoadout(player.id, cardId, nextInLoadout);
     setBusyCardId(null);
   }
 
@@ -404,31 +422,42 @@ export function CharacterDetail() {
       </Section>
 
       {/* Cartas de domínio */}
-      <Section title={`Cartas de Domínio (${myCards.length})`}>
+      <Section title={`Cartas de Domínio (${myCards.length}) — ${activeCardCount}/${MAX_LOADOUT_CARDS} ativas`}>
         {!player.classId && <p className="text-xs text-stone-400">Escolha uma classe para ver as cartas disponíveis.</p>}
         {myCards.length > 0 && (
           <div className="space-y-2 mb-3">
-            {myCards.map((c) => (
-              <div key={c.id} className="border border-violet-200 bg-violet-50 rounded-lg p-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-stone-900">
-                      {c.name} <span className="text-xs font-normal text-stone-500">— Nível {c.level} · {c.domain} · {c.type} · Custo {c.recallCost}</span>
-                    </p>
-                    <p className="text-xs text-stone-600 mt-0.5 whitespace-pre-line">{c.description}</p>
+            {myCards.map((c) => {
+              const inLoadout = claimedCards[c.id]?.inLoadout ?? true;
+              return (
+                <div key={c.id} className={`border rounded-lg p-2 ${inLoadout ? 'border-violet-200 bg-violet-50' : 'border-stone-200 bg-stone-50'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-stone-900">
+                        {c.name} <span className="text-xs font-normal text-stone-500">— Nível {c.level} · {c.domain} · {c.type} · Custo {c.recallCost}</span>
+                      </p>
+                      <p className="text-xs text-stone-600 mt-0.5 whitespace-pre-line">{c.description}</p>
+                    </div>
+                    {canEdit && (
+                      <button onClick={() => handleRelease(c.id)} disabled={busyCardId === c.id} className="text-xs text-red-600 hover:underline shrink-0">
+                        Remover
+                      </button>
+                    )}
                   </div>
-                  {canEdit && (
-                    <button
-                      onClick={() => handleRelease(c.id)}
-                      disabled={busyCardId === c.id}
-                      className="text-xs text-red-600 hover:underline shrink-0"
-                    >
-                      Remover
-                    </button>
-                  )}
+                  <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-black/5">
+                    <span className={`text-[11px] font-medium ${inLoadout ? 'text-violet-700' : 'text-stone-500'}`}>{inLoadout ? '⚡ Ativa (loadout)' : '📦 No cofre (vault)'}</span>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleToggleLoadout(c.id, !inLoadout)}
+                        disabled={busyCardId === c.id}
+                        className="text-[11px] text-violet-700 hover:underline disabled:text-stone-400"
+                      >
+                        {inLoadout ? 'Mandar pro cofre' : 'Ativar'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {cardError && <p className="text-xs text-red-600 mb-2">{cardError}</p>}
@@ -439,7 +468,7 @@ export function CharacterDetail() {
             </summary>
             <div className="mt-2 space-y-1.5 max-h-96 overflow-y-auto">
               {availableCards.map((c) => {
-                const claimedBy = claimedCards[c.id];
+                const claimedBy = claimedCards[c.id]?.characterId;
                 const isMine = claimedBy === player.id;
                 const isTaken = Boolean(claimedBy) && !isMine;
                 return (

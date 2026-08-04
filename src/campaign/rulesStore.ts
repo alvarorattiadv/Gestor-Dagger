@@ -1,18 +1,21 @@
 import { create } from 'zustand';
 import type { DaggerheartRules } from './rulesTypes';
-import { claimDomainCard, fetchClaimedDomainCards, fetchDaggerheartRules, releaseDomainCard } from './rulesData';
+import { claimDomainCard, fetchClaimedDomainCards, fetchDaggerheartRules, releaseDomainCard, setDomainCardLoadout, type ClaimedCardInfo } from './rulesData';
+
+export const MAX_LOADOUT_CARDS = 5;
 
 interface RulesState {
   rules: DaggerheartRules | null;
-  /** domainCardId -> characterId holding it, campaign-wide */
-  claimedCards: Record<string, string>;
+  /** domainCardId -> { characterId, inLoadout }, campaign-wide */
+  claimedCards: Record<string, ClaimedCardInfo>;
   loading: boolean;
   loaded: boolean;
   error: string | null;
 
   loadRules: () => Promise<void>;
-  claimCard: (characterId: string, domainCardId: string) => Promise<{ ok: boolean; error: string | null }>;
+  claimCard: (characterId: string, domainCardId: string, inLoadout: boolean) => Promise<{ ok: boolean; error: string | null }>;
   releaseCard: (characterId: string, domainCardId: string) => Promise<void>;
+  setCardLoadout: (characterId: string, domainCardId: string, inLoadout: boolean) => Promise<void>;
 }
 
 export const useRulesStore = create<RulesState>((set, get) => ({
@@ -34,10 +37,10 @@ export const useRulesStore = create<RulesState>((set, get) => ({
     }
   },
 
-  claimCard: async (characterId, domainCardId) => {
-    const result = await claimDomainCard(characterId, domainCardId);
+  claimCard: async (characterId, domainCardId, inLoadout) => {
+    const result = await claimDomainCard(characterId, domainCardId, inLoadout);
     if (result.ok) {
-      set((s) => ({ claimedCards: { ...s.claimedCards, [domainCardId]: characterId } }));
+      set((s) => ({ claimedCards: { ...s.claimedCards, [domainCardId]: { characterId, inLoadout } } }));
     }
     return result;
   },
@@ -49,5 +52,10 @@ export const useRulesStore = create<RulesState>((set, get) => ({
       delete next[domainCardId];
       return { claimedCards: next };
     });
+  },
+
+  setCardLoadout: async (characterId, domainCardId, inLoadout) => {
+    await setDomainCardLoadout(characterId, domainCardId, inLoadout);
+    set((s) => ({ claimedCards: { ...s.claimedCards, [domainCardId]: { characterId, inLoadout } } }));
   },
 }));
