@@ -4,15 +4,8 @@ import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore } from '../rulesStore';
 import type { FeatureText } from '../rulesTypes';
-import { deriveCharacterStats } from '../deriveStats';
+import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
-
-function tierForLevel(level: number): number {
-  if (level <= 1) return 1;
-  if (level <= 4) return 2;
-  if (level <= 7) return 3;
-  return 4;
-}
 
 const SELECT_CLASS = 'w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm bg-white disabled:bg-stone-50 disabled:text-stone-500';
 
@@ -101,7 +94,8 @@ export function CharacterDetail() {
   const selectedArmor = rules.armors.find((a) => a.id === player.armorId);
   const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
-  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry);
+  const hasBareBones = myCards.some((c) => c.name === 'BARE BONES');
+  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones);
 
   function setManual(field: keyof Pick<Player, 'bonusEvasion' | 'bonusHitPoints' | 'bonusStress' | 'bonusMajorThreshold' | 'bonusSevereThreshold'>, value: number) {
     if (!player) return;
@@ -151,22 +145,47 @@ export function CharacterDetail() {
           <StatTile label="Stress" value={stats.stressSlots.total} />
           <StatTile label="Armadura" value={stats.armorScore} />
         </div>
-        <p className="text-xs text-stone-600 mb-3">
+        <p className="text-xs text-stone-600 mb-1">
           Limiares de dano — Maior: <strong>{stats.majorThreshold.total}</strong>, Severo: <strong>{stats.severeThreshold.total}</strong>
           {stats.majorThreshold.source === 'unarmored' && <span className="text-stone-400 italic"> (sem armadura equipada)</span>}
+          {stats.majorThreshold.source === 'bare-bones' && <span className="text-violet-600 italic"> (carta Bare Bones, sem armadura)</span>}
         </p>
+        {stats.armorScoreNote && <p className="text-xs text-amber-700 mb-3">{stats.armorScoreNote}</p>}
         <details className="text-xs text-stone-600">
           <summary className="cursor-pointer font-semibold text-violet-800">Como isso foi calculado / ajustes manuais</summary>
           <div className="mt-2 space-y-3">
             <div>
-              <p className="font-semibold text-stone-700">Evasão = {stats.evasion.base} (classe) {fmtSigned(stats.evasion.armor)} (armadura) {fmtSigned(stats.evasion.ancestry)} (ancestralidade) {fmtSigned(stats.evasion.manual)} (manual)</p>
-              <p className="font-semibold text-stone-700 mt-1">PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.manual)} (manual)</p>
+              <p className="font-semibold text-stone-700">
+                Evasão = {stats.evasion.base} (classe) {fmtSigned(stats.evasion.armor)} (armadura) {fmtSigned(stats.evasion.ancestry)} (ancestralidade){' '}
+                {fmtSigned(stats.evasion.subclassFoundation)} (fundação da subclasse) {fmtSigned(stats.evasion.manual)} (manual)
+              </p>
+              <p className="font-semibold text-stone-700 mt-1">
+                PV = {stats.hitPoints.base} (classe) {fmtSigned(stats.hitPoints.ancestry)} (ancestralidade) {fmtSigned(stats.hitPoints.manual)} (manual)
+              </p>
+              <p className="font-semibold text-stone-700 mt-1">
+                Limiar Maior = {stats.majorThreshold.base} (base) {fmtSigned(stats.majorThreshold.level)} (nível) {fmtSigned(stats.majorThreshold.subclassFoundation)} (fundação
+                da subclasse) {fmtSigned(stats.majorThreshold.manual)} (manual)
+              </p>
+              <p className="font-semibold text-stone-700 mt-1">
+                Limiar Severo = {stats.severeThreshold.base} (base) {fmtSigned(stats.severeThreshold.level)} (nível) {fmtSigned(stats.severeThreshold.subclassFoundation)}{' '}
+                (fundação da subclasse) {fmtSigned(stats.severeThreshold.manual)} (manual)
+              </p>
             </div>
             <p className="text-stone-500">
-              O cálculo automático cobre classe, armadura e ancestralidade. Cartas de domínio que dão bônus permanentes (ex: Vitality, do domínio
-              Blade, deixa escolher 2 de 3 benefícios ao pegar a carta) exigem uma escolha do jogador — por isso entram como ajuste manual abaixo, não
-              automático.
+              O cálculo automático cobre classe, armadura, ancestralidade e a fundação da subclasse (sempre ativa assim que você escolhe a subclasse).
+              Bônus que exigem uma escolha do jogador (como a carta Vitality do domínio Blade, que deixa escolher 2 de 3 benefícios) ou dependem de um
+              traço que a ficha ainda não rastreia (como Proficiência ou Força) entram como ajuste manual abaixo.
             </p>
+            {stats.reminders.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 space-y-1">
+                <p className="font-semibold text-amber-800">Lembretes — confira se já foram pegos e ajuste manualmente se sim:</p>
+                {stats.reminders.map((r) => (
+                  <p key={r} className="text-amber-800">
+                    • {r}
+                  </p>
+                ))}
+              </div>
+            )}
             {canEdit && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
                 <ManualAdjustInput label="Evasão manual" value={player.bonusEvasion ?? 0} onChange={(v) => setManual('bonusEvasion', v)} />
