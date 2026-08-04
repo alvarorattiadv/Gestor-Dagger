@@ -4,6 +4,7 @@ import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
 import type { AdvancementOption, CharacterAdvancement, FeatureText } from '../rulesTypes';
+import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
 
@@ -261,6 +262,109 @@ export function CharacterDetail() {
           </div>
         </details>
       </div>
+
+      {/* Rastreio de sessão */}
+      <Section title="Rastreio de Sessão">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <PipTracker
+            label="Pontos de Vida"
+            total={stats.hitPoints.total}
+            marked={player.markedHitPoints ?? 0}
+            onToggle={(i) => updatePlayer(player.id, (p) => ({ ...p, markedHitPoints: togglePip(i, p.markedHitPoints ?? 0) }))}
+            colorClass="bg-red-500 border-red-600"
+            disabled={!canEdit}
+          />
+          <PipTracker
+            label="Stress"
+            total={stats.stressSlots.total}
+            marked={player.markedStress ?? 0}
+            onToggle={(i) => updatePlayer(player.id, (p) => ({ ...p, markedStress: togglePip(i, p.markedStress ?? 0) }))}
+            colorClass="bg-amber-500 border-amber-600"
+            disabled={!canEdit}
+          />
+          <PipTracker
+            label="Espaços de Armadura"
+            total={stats.armorScore}
+            marked={player.markedArmorSlots ?? 0}
+            onToggle={(i) => updatePlayer(player.id, (p) => ({ ...p, markedArmorSlots: togglePip(i, p.markedArmorSlots ?? 0) }))}
+            colorClass="bg-stone-500 border-stone-600"
+            disabled={!canEdit}
+          />
+          <div>
+            <PipTracker
+              label="Esperança"
+              total={player.hopeMax ?? 6}
+              marked={player.hope ?? 2}
+              onToggle={(i) => updatePlayer(player.id, (p) => ({ ...p, hope: togglePip(i, p.hope ?? 2) }))}
+              colorClass="bg-sky-500 border-sky-600"
+              disabled={!canEdit}
+            />
+            {canEdit && (
+              <div className="flex items-center gap-1.5 mt-1">
+                <span className="text-[11px] text-stone-400">Máximo:</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={player.hopeMax ?? 6}
+                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, hopeMax: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
+                  className="w-14 border border-stone-300 rounded-md px-1.5 py-0.5 text-xs"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </Section>
+
+      {/* Experiências */}
+      <Section title={`Experiências (${(player.experiences ?? []).length})`}>
+        <div className="space-y-2">
+          {(player.experiences ?? []).map((exp, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                value={exp.name}
+                onChange={(e) =>
+                  updatePlayer(player.id, (p) => ({
+                    ...p,
+                    experiences: (p.experiences ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                  }))
+                }
+                disabled={!canEdit}
+                placeholder="Ex: Atirador de Elite"
+                className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+              />
+              <input
+                type="number"
+                value={exp.modifier}
+                onChange={(e) =>
+                  updatePlayer(player.id, (p) => ({
+                    ...p,
+                    experiences: (p.experiences ?? []).map((x, i) => (i === idx ? { ...x, modifier: parseInt(e.target.value, 10) || 0 } : x)),
+                  }))
+                }
+                disabled={!canEdit}
+                className="w-16 border border-stone-300 rounded-md px-2 py-1.5 text-sm text-center"
+              />
+              {canEdit && (
+                <button
+                  onClick={() => updatePlayer(player.id, (p) => ({ ...p, experiences: (p.experiences ?? []).filter((_, i) => i !== idx) }))}
+                  className="text-xs text-red-600 hover:underline shrink-0"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          ))}
+          {(player.experiences ?? []).length === 0 && <p className="text-xs text-stone-400">Nenhuma Experiência ainda.</p>}
+          {canEdit && (
+            <button
+              onClick={() => updatePlayer(player.id, (p) => ({ ...p, experiences: [...(p.experiences ?? []), { name: '', modifier: 2 }] }))}
+              className="text-xs font-medium text-violet-700 hover:underline"
+            >
+              + Experiência
+            </button>
+          )}
+        </div>
+      </Section>
 
       {/* Ancestralidade */}
       <Section title="Ancestralidade">
@@ -724,5 +828,53 @@ function TraitInput({ label, value, onChange }: { label: string; value: number; 
         className="w-12 text-center border-0 bg-transparent text-sm font-semibold text-stone-800 focus:outline-none"
       />
     </label>
+  );
+}
+
+/** Clicking a pip fills up through it; clicking the topmost already-filled pip unfills just that one. */
+function togglePip(index: number, marked: number): number {
+  return index < marked && index === marked - 1 ? marked - 1 : index + 1;
+}
+
+function PipTracker({
+  label,
+  total,
+  marked,
+  onToggle,
+  colorClass,
+  disabled,
+}: {
+  label: string;
+  total: number;
+  marked: number;
+  onToggle: (index: number) => void;
+  colorClass: string;
+  disabled?: boolean;
+}) {
+  const clampedMarked = Math.min(marked, total);
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium text-stone-600">{label}</span>
+        <span className="text-xs text-stone-400">
+          {clampedMarked}/{total}
+        </span>
+      </div>
+      {total <= 0 ? (
+        <p className="text-xs text-stone-300 italic">—</p>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {Array.from({ length: total }).map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              disabled={disabled}
+              onClick={() => onToggle(i)}
+              className={`w-5 h-5 rounded border transition-colors disabled:cursor-not-allowed ${i < clampedMarked ? colorClass : 'bg-white border-stone-300'}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -153,6 +153,17 @@ export interface Player {
   traitPresence?: number;
   traitKnowledge?: number;
   proficiency: number;
+  markedHitPoints?: number;
+  markedStress?: number;
+  markedArmorSlots?: number;
+  hope?: number;
+  hopeMax?: number;
+  experiences?: Experience[];
+}
+
+export interface Experience {
+  name: string;
+  modifier: number;
 }
 
 export interface PartyResources {

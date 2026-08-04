@@ -124,6 +124,12 @@ function playerFromRow(row: any): Player {
     traitPresence: row.trait_presence ?? 0,
     traitKnowledge: row.trait_knowledge ?? 0,
     proficiency: row.proficiency ?? 1,
+    markedHitPoints: row.marked_hit_points ?? 0,
+    markedStress: row.marked_stress ?? 0,
+    markedArmorSlots: row.marked_armor_slots ?? 0,
+    hope: row.hope ?? 2,
+    hopeMax: row.hope_max ?? 6,
+    experiences: row.experiences ?? [],
   };
 }
 
@@ -424,6 +430,12 @@ export async function dbUpsertPlayer(p: Player) {
     trait_presence: p.traitPresence ?? 0,
     trait_knowledge: p.traitKnowledge ?? 0,
     proficiency: p.proficiency,
+    marked_hit_points: p.markedHitPoints ?? 0,
+    marked_stress: p.markedStress ?? 0,
+    marked_armor_slots: p.markedArmorSlots ?? 0,
+    hope: p.hope ?? 2,
+    hope_max: p.hopeMax ?? 6,
+    experiences: p.experiences ?? [],
   });
   if (error) logSyncError('upsert player', error);
 }
