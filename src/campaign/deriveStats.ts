@@ -28,13 +28,21 @@ function ancestrySlotBonus(ancestry: Ancestry | undefined, kind: 'Hit Point' | '
   return total;
 }
 
+export interface ThresholdBreakdown {
+  source: 'armor' | 'unarmored';
+  base: number;
+  level: number;
+  manual: number;
+  total: number;
+}
+
 export interface DerivedStats {
   evasion: { base: number; armor: number; ancestry: number; manual: number; total: number };
   hitPoints: { base: number; ancestry: number; manual: number; total: number };
   stressSlots: { ancestry: number; manual: number; total: number };
-  majorThreshold: { armorBase: number; level: number; manual: number; total: number } | null;
-  severeThreshold: { armorBase: number; level: number; manual: number; total: number } | null;
-  armorScore: number | null;
+  majorThreshold: ThresholdBreakdown;
+  severeThreshold: ThresholdBreakdown;
+  armorScore: number;
 }
 
 export function deriveCharacterStats(
@@ -55,22 +63,16 @@ export function deriveCharacterStats(
   const stressAncestry = ancestrySlotBonus(selectedAncestry, 'Stress');
   const stressManual = player.bonusStress ?? 0;
 
-  const majorThreshold = selectedArmor
-    ? {
-        armorBase: selectedArmor.majorThreshold,
-        level: player.level,
-        manual: player.bonusMajorThreshold ?? 0,
-        total: selectedArmor.majorThreshold + player.level + (player.bonusMajorThreshold ?? 0),
-      }
-    : null;
-  const severeThreshold = selectedArmor
-    ? {
-        armorBase: selectedArmor.severeThreshold,
-        level: player.level,
-        manual: player.bonusSevereThreshold ?? 0,
-        total: selectedArmor.severeThreshold + player.level + (player.bonusSevereThreshold ?? 0),
-      }
-    : null;
+  const majorManual = player.bonusMajorThreshold ?? 0;
+  const severeManual = player.bonusSevereThreshold ?? 0;
+
+  // Unarmored rule: Armor Score 0, Major threshold = level, Severe threshold = level x2.
+  const majorThreshold: ThresholdBreakdown = selectedArmor
+    ? { source: 'armor', base: selectedArmor.majorThreshold, level: player.level, manual: majorManual, total: selectedArmor.majorThreshold + player.level + majorManual }
+    : { source: 'unarmored', base: 0, level: player.level, manual: majorManual, total: player.level + majorManual };
+  const severeThreshold: ThresholdBreakdown = selectedArmor
+    ? { source: 'armor', base: selectedArmor.severeThreshold, level: player.level, manual: severeManual, total: selectedArmor.severeThreshold + player.level + severeManual }
+    : { source: 'unarmored', base: 0, level: player.level, manual: severeManual, total: player.level * 2 + severeManual };
 
   return {
     evasion: { base: evasionBase, armor: evasionArmor, ancestry: evasionAncestry, manual: evasionManual, total: evasionBase + evasionArmor + evasionAncestry + evasionManual },
@@ -78,6 +80,6 @@ export function deriveCharacterStats(
     stressSlots: { ancestry: stressAncestry, manual: stressManual, total: stressAncestry + stressManual },
     majorThreshold,
     severeThreshold,
-    armorScore: selectedArmor?.baseScore ?? null,
+    armorScore: selectedArmor?.baseScore ?? 0,
   };
 }

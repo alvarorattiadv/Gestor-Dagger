@@ -149,13 +149,12 @@ export function CharacterDetail() {
           <StatTile label="Evasão" value={stats.evasion.total} />
           <StatTile label="Pontos de Vida" value={stats.hitPoints.total} />
           <StatTile label="Stress" value={stats.stressSlots.total} />
-          <StatTile label="Armadura" value={stats.armorScore ?? '—'} />
+          <StatTile label="Armadura" value={stats.armorScore} />
         </div>
-        {(stats.majorThreshold || stats.severeThreshold) && (
-          <p className="text-xs text-stone-600 mb-3">
-            Limiares de dano — Maior: <strong>{stats.majorThreshold?.total ?? '—'}</strong>, Severo: <strong>{stats.severeThreshold?.total ?? '—'}</strong>
-          </p>
-        )}
+        <p className="text-xs text-stone-600 mb-3">
+          Limiares de dano — Maior: <strong>{stats.majorThreshold.total}</strong>, Severo: <strong>{stats.severeThreshold.total}</strong>
+          {stats.majorThreshold.source === 'unarmored' && <span className="text-stone-400 italic"> (sem armadura equipada)</span>}
+        </p>
         <details className="text-xs text-stone-600">
           <summary className="cursor-pointer font-semibold text-violet-800">Como isso foi calculado / ajustes manuais</summary>
           <div className="mt-2 space-y-3">
