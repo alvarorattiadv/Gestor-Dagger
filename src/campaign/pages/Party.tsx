@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { PlayerNotesField, GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
@@ -97,6 +98,11 @@ export function Party() {
                   onChange={(v) => updatePlayer(player.id, (p) => ({ ...p, playerNotes: v }))}
                   placeholder="Como o jogador vê a evolução do próprio personagem"
                 />
+                <Link to={`/campanha/grupo/${player.id}`} className="block text-center text-xs font-semibold text-violet-700 hover:underline py-1">
+                  Abrir ficha (nível {player.level}
+                  {player.classId ? '' : ' · sem classe'})
+                </Link>
+
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
                   {player.linkedUserId ? (
                     <span className="text-emerald-700 font-medium">🔗 Vinculado a uma conta</span>

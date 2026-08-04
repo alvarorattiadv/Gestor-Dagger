@@ -133,6 +133,14 @@ export interface Player {
   gmSecret: string;
   playerNotes: string;
   linkedUserId?: string;
+  classId?: string;
+  subclassId?: string;
+  level: number;
+  ancestryId?: string;
+  communityId?: string;
+  primaryWeaponId?: string;
+  secondaryWeaponId?: string;
+  armorId?: string;
 }
 
 export interface PartyResources {

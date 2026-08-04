@@ -104,6 +104,14 @@ function playerFromRow(row: any): Player {
     gmSecret: row.gm_secret,
     playerNotes: row.player_notes,
     linkedUserId: row.linked_user_id ?? undefined,
+    classId: row.class_id ?? undefined,
+    subclassId: row.subclass_id ?? undefined,
+    level: row.level ?? 1,
+    ancestryId: row.ancestry_id ?? undefined,
+    communityId: row.community_id ?? undefined,
+    primaryWeaponId: row.primary_weapon_id ?? undefined,
+    secondaryWeaponId: row.secondary_weapon_id ?? undefined,
+    armorId: row.armor_id ?? undefined,
   };
 }
 
@@ -384,6 +392,14 @@ export async function dbUpsertPlayer(p: Player) {
     gm_secret: p.gmSecret,
     player_notes: p.playerNotes,
     linked_user_id: p.linkedUserId ?? null,
+    class_id: p.classId ?? null,
+    subclass_id: p.subclassId ?? null,
+    level: p.level,
+    ancestry_id: p.ancestryId ?? null,
+    community_id: p.communityId ?? null,
+    primary_weapon_id: p.primaryWeaponId ?? null,
+    secondary_weapon_id: p.secondaryWeaponId ?? null,
+    armor_id: p.armorId ?? null,
   });
   if (error) logSyncError('upsert player', error);
 }

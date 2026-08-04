@@ -9,6 +9,7 @@ import { Artifacts } from './campaign/pages/Artifacts';
 import { Sessions } from './campaign/pages/Sessions';
 import { Threads } from './campaign/pages/Threads';
 import { Party } from './campaign/pages/Party';
+import { CharacterDetail } from './campaign/pages/CharacterDetail';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="sessoes" element={<Sessions />} />
         <Route path="fios" element={<Threads />} />
         <Route path="grupo" element={<Party />} />
+        <Route path="grupo/:characterId" element={<CharacterDetail />} />
       </Route>
     </Routes>
   );

@@ -1,0 +1,404 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useCampaignStore } from '../store';
+import { useRoleStore } from '../role';
+import { useRulesStore } from '../rulesStore';
+import type { FeatureText } from '../rulesTypes';
+
+function tierForLevel(level: number): number {
+  if (level <= 1) return 1;
+  if (level <= 4) return 2;
+  if (level <= 7) return 3;
+  return 4;
+}
+
+const SELECT_CLASS = 'w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm bg-white disabled:bg-stone-50 disabled:text-stone-500';
+
+export function CharacterDetail() {
+  const { characterId } = useParams<{ characterId: string }>();
+  const player = useCampaignStore((s) => s.campaign.party.players.find((p) => p.id === characterId));
+  const updatePlayer = useCampaignStore((s) => s.updatePlayer);
+  const isGM = useRoleStore((s) => s.role === 'gm');
+  const userId = useRoleStore((s) => s.user?.id);
+
+  const rules = useRulesStore((s) => s.rules);
+  const rulesLoading = useRulesStore((s) => s.loading);
+  const rulesError = useRulesStore((s) => s.error);
+  const loadRules = useRulesStore((s) => s.loadRules);
+  const claimedCards = useRulesStore((s) => s.claimedCards);
+  const claimCard = useRulesStore((s) => s.claimCard);
+  const releaseCard = useRulesStore((s) => s.releaseCard);
+  const [cardError, setCardError] = useState('');
+  const [busyCardId, setBusyCardId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadRules();
+  }, [loadRules]);
+
+  if (!player || !characterId) {
+    return (
+      <div className="text-center py-16 text-stone-500">
+        <p className="mb-3">Personagem não encontrado.</p>
+        <Link to="/campanha/grupo" className="text-violet-700 hover:underline text-sm">
+          Voltar para Grupo
+        </Link>
+      </div>
+    );
+  }
+
+  const isOwner = Boolean(userId) && player.linkedUserId === userId;
+  const canEdit = isGM || isOwner;
+
+  if (rulesLoading || !rules) {
+    return <div className="text-center py-16 text-stone-500 text-sm">Carregando regras de Daggerheart...</div>;
+  }
+  if (rulesError) {
+    return <div className="text-center py-16 text-red-600 text-sm">Falha ao carregar regras: {rulesError}</div>;
+  }
+
+  const selectedClass = rules.classes.find((c) => c.id === player.classId);
+  const subclassOptions = rules.subclasses.filter((s) => s.classId === player.classId);
+  const selectedSubclass = rules.subclasses.find((s) => s.id === player.subclassId);
+  const classDomains = selectedClass ? [selectedClass.domain1, selectedClass.domain2] : [];
+  const tier = tierForLevel(player.level);
+
+  const availableCards = rules.domainCards
+    .filter((c) => classDomains.includes(c.domain) && c.level <= player.level)
+    .sort((a, b) => a.level - b.level || a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
+
+  const myCardIds = new Set(Object.entries(claimedCards).filter(([, charId]) => charId === player.id).map(([cardId]) => cardId));
+  const myCards = rules.domainCards.filter((c) => myCardIds.has(c.id));
+
+  async function handleClaim(cardId: string) {
+    if (!player) return;
+    setCardError('');
+    setBusyCardId(cardId);
+    const result = await claimCard(player.id, cardId);
+    setBusyCardId(null);
+    if (!result.ok && result.error) setCardError(result.error);
+  }
+
+  async function handleRelease(cardId: string) {
+    if (!player) return;
+    setBusyCardId(cardId);
+    await releaseCard(player.id, cardId);
+    setBusyCardId(null);
+  }
+
+  function handleClassChange(classId: string) {
+    if (!player) return;
+    const stillValidSubclass = rules?.subclasses.some((s) => s.id === player.subclassId && s.classId === classId);
+    updatePlayer(player.id, (p) => ({ ...p, classId: classId || undefined, subclassId: stillValidSubclass ? p.subclassId : undefined }));
+  }
+
+  const primaryWeapons = rules.weapons.filter((w) => w.tableType === 'primary' && w.tier <= tier);
+  const secondaryWeapons = rules.weapons.filter((w) => w.tableType === 'secondary' && w.tier <= tier);
+  const armorOptions = rules.armors.filter((a) => a.tier <= tier);
+  const selectedPrimary = rules.weapons.find((w) => w.id === player.primaryWeaponId);
+  const selectedSecondary = rules.weapons.find((w) => w.id === player.secondaryWeaponId);
+  const selectedArmor = rules.armors.find((a) => a.id === player.armorId);
+  const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
+  const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
+
+  return (
+    <div className="space-y-5 max-w-3xl">
+      <div>
+        <Link to="/campanha/grupo" className="text-xs text-stone-500 hover:underline">
+          ← Grupo
+        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-xl font-bold text-stone-900">{player.charName || 'Novo Personagem'}</h2>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-800">
+            Nível {player.level} · Tier {tier}
+          </span>
+        </div>
+        {selectedClass && (
+          <p className="text-sm text-stone-500">
+            {selectedClass.name}
+            {selectedSubclass ? ` — ${selectedSubclass.name}` : ''}
+          </p>
+        )}
+      </div>
+
+      {canEdit && (
+        <div className="bg-white border border-stone-200 rounded-xl p-3 flex items-center gap-3">
+          <label className="text-xs font-medium text-stone-600 shrink-0">Nível</label>
+          <input
+            type="number"
+            min={1}
+            max={10}
+            value={player.level}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, level: Math.max(1, Math.min(10, parseInt(e.target.value, 10) || 1)) }))}
+            className="w-20 border border-stone-300 rounded-md px-2 py-1 text-sm"
+          />
+        </div>
+      )}
+
+      {/* Ancestralidade */}
+      <Section title="Ancestralidade">
+        <select
+          value={player.ancestryId ?? ''}
+          onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryId: e.target.value || undefined }))}
+          disabled={!canEdit}
+          className={SELECT_CLASS}
+        >
+          <option value="">Escolher...</option>
+          {rules.ancestries.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        {selectedAncestry && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-stone-500">{selectedAncestry.description}</p>
+            {selectedAncestry.features.map((f: FeatureText) => (
+              <FeatureRow key={f.name} feature={f} />
+            ))}
+          </div>
+        )}
+      </Section>
+
+      {/* Comunidade */}
+      <Section title="Comunidade">
+        <select
+          value={player.communityId ?? ''}
+          onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, communityId: e.target.value || undefined }))}
+          disabled={!canEdit}
+          className={SELECT_CLASS}
+        >
+          <option value="">Escolher...</option>
+          {rules.communities.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        {selectedCommunity && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-stone-500">{selectedCommunity.description}</p>
+            <p className="text-xs text-stone-400 italic">{selectedCommunity.adjectives.join(', ')}</p>
+            <FeatureRow feature={selectedCommunity.feature} />
+          </div>
+        )}
+      </Section>
+
+      {/* Classe e Subclasse */}
+      <Section title="Classe">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <select value={player.classId ?? ''} onChange={(e) => handleClassChange(e.target.value)} disabled={!canEdit} className={SELECT_CLASS}>
+            <option value="">Escolher classe...</option>
+            {rules.classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={player.subclassId ?? ''}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, subclassId: e.target.value || undefined }))}
+            disabled={!canEdit || !player.classId}
+            className={SELECT_CLASS}
+          >
+            <option value="">Escolher subclasse...</option>
+            {subclassOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {selectedClass && (
+          <div className="mt-3 space-y-2 text-sm">
+            <p className="text-xs text-stone-500">{selectedClass.description}</p>
+            <div className="flex flex-wrap gap-3 text-xs text-stone-600">
+              <span>
+                <strong>Domínios:</strong> {selectedClass.domain1} / {selectedClass.domain2}
+              </span>
+              <span>
+                <strong>Evasão inicial:</strong> {selectedClass.startingEvasion}
+              </span>
+              <span>
+                <strong>PV inicial:</strong> {selectedClass.startingHitPoints}
+              </span>
+            </div>
+            <p className="text-xs text-stone-600">
+              <strong>Itens iniciais:</strong> {selectedClass.classItems}
+            </p>
+            <FeatureRow feature={{ name: `${selectedClass.hopeFeature.name} (${selectedClass.hopeFeature.cost} Esperança)`, text: selectedClass.hopeFeature.text }} />
+            {selectedClass.classFeatures.map((f) => (
+              <FeatureRow key={f.name} feature={f} />
+            ))}
+          </div>
+        )}
+
+        {selectedSubclass && (
+          <div className="mt-3 pt-3 border-t border-stone-100 space-y-2 text-sm">
+            <p className="text-xs text-stone-500">{selectedSubclass.blurb}</p>
+            {selectedSubclass.spellcastTrait && (
+              <p className="text-xs text-stone-600">
+                <strong>Traço de conjuração:</strong> {selectedSubclass.spellcastTrait}
+              </p>
+            )}
+            <p className="text-xs font-semibold text-stone-700">Fundação</p>
+            {selectedSubclass.foundation.map((f) => (
+              <FeatureRow key={f.name} feature={f} />
+            ))}
+            <details className="text-xs text-stone-500">
+              <summary className="cursor-pointer font-semibold text-stone-600">Especialização e Maestria (níveis futuros)</summary>
+              <div className="mt-2 space-y-2">
+                {selectedSubclass.specialization.map((f) => (
+                  <FeatureRow key={f.name} feature={f} />
+                ))}
+                {selectedSubclass.mastery.map((f) => (
+                  <FeatureRow key={f.name} feature={f} />
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+      </Section>
+
+      {/* Equipamento */}
+      <Section title="Equipamento">
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-stone-600">Arma primária</label>
+            <select
+              value={player.primaryWeaponId ?? ''}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, primaryWeaponId: e.target.value || undefined }))}
+              disabled={!canEdit}
+              className={SELECT_CLASS}
+            >
+              <option value="">Escolher...</option>
+              {primaryWeapons.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage})
+                </option>
+              ))}
+            </select>
+            {selectedPrimary?.feature && <p className="text-xs text-stone-500 mt-1">{selectedPrimary.feature}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-stone-600">Arma secundária</label>
+            <select
+              value={player.secondaryWeaponId ?? ''}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, secondaryWeaponId: e.target.value || undefined }))}
+              disabled={!canEdit}
+              className={SELECT_CLASS}
+            >
+              <option value="">Escolher...</option>
+              {secondaryWeapons.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage})
+                </option>
+              ))}
+            </select>
+            {selectedSecondary?.feature && <p className="text-xs text-stone-500 mt-1">{selectedSecondary.feature}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-stone-600">Armadura</label>
+            <select
+              value={player.armorId ?? ''}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, armorId: e.target.value || undefined }))}
+              disabled={!canEdit}
+              className={SELECT_CLASS}
+            >
+              <option value="">Escolher...</option>
+              {armorOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} (Tier {a.tier}, limiares {a.majorThreshold}/{a.severeThreshold}, score {a.baseScore})
+                </option>
+              ))}
+            </select>
+            {selectedArmor?.feature && <p className="text-xs text-stone-500 mt-1">{selectedArmor.feature}</p>}
+          </div>
+        </div>
+      </Section>
+
+      {/* Cartas de domínio */}
+      <Section title={`Cartas de Domínio (${myCards.length})`}>
+        {!player.classId && <p className="text-xs text-stone-400">Escolha uma classe para ver as cartas disponíveis.</p>}
+        {myCards.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {myCards.map((c) => (
+              <div key={c.id} className="border border-violet-200 bg-violet-50 rounded-lg p-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900">
+                      {c.name} <span className="text-xs font-normal text-stone-500">— Nível {c.level} · {c.domain} · {c.type} · Custo {c.recallCost}</span>
+                    </p>
+                    <p className="text-xs text-stone-600 mt-0.5 whitespace-pre-line">{c.description}</p>
+                  </div>
+                  {canEdit && (
+                    <button
+                      onClick={() => handleRelease(c.id)}
+                      disabled={busyCardId === c.id}
+                      className="text-xs text-red-600 hover:underline shrink-0"
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {cardError && <p className="text-xs text-red-600 mb-2">{cardError}</p>}
+        {canEdit && player.classId && (
+          <details className="text-xs">
+            <summary className="cursor-pointer font-semibold text-stone-600">
+              Escolher carta ({classDomains.join(' / ')}, nível {player.level} ou menor)
+            </summary>
+            <div className="mt-2 space-y-1.5 max-h-96 overflow-y-auto">
+              {availableCards.map((c) => {
+                const claimedBy = claimedCards[c.id];
+                const isMine = claimedBy === player.id;
+                const isTaken = Boolean(claimedBy) && !isMine;
+                return (
+                  <div key={c.id} className={`border rounded-lg p-2 ${isTaken ? 'border-stone-200 bg-stone-50 opacity-60' : 'border-stone-200 bg-white'}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-medium text-stone-800">
+                          {c.name} <span className="text-xs font-normal text-stone-500">— Nível {c.level} · {c.domain} · {c.type} · Custo {c.recallCost}</span>
+                        </p>
+                        <p className="text-xs text-stone-500 mt-0.5 whitespace-pre-line">{c.description}</p>
+                      </div>
+                      {!isMine && (
+                        <button
+                          onClick={() => handleClaim(c.id)}
+                          disabled={isTaken || busyCardId === c.id}
+                          className="text-xs text-violet-700 hover:underline shrink-0 disabled:text-stone-400 disabled:no-underline"
+                        >
+                          {isTaken ? 'Já escolhida' : 'Pegar'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </details>
+        )}
+      </Section>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white border border-stone-200 rounded-xl p-4">
+      <h3 className="text-sm font-bold text-stone-800 mb-2">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function FeatureRow({ feature }: { feature: FeatureText }) {
+  return (
+    <p className="text-xs text-stone-600">
+      <strong className="text-stone-800">{feature.name}:</strong> {feature.text}
+    </p>
+  );
+}

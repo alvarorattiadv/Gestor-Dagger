@@ -65,7 +65,7 @@ function normalizeCampaign(campaign: Campaign): Campaign {
     },
     party: {
       ...campaign.party,
-      players: campaign.party.players.map((p) => ({ ...p, gmSecret: p.gmSecret ?? '', playerNotes: p.playerNotes ?? '' })),
+      players: campaign.party.players.map((p) => ({ ...p, gmSecret: p.gmSecret ?? '', playerNotes: p.playerNotes ?? '', level: p.level ?? 1 })),
     },
   };
 }
@@ -365,6 +365,7 @@ export const useCampaignStore = create<CampaignStoreState>()(
           gmSecret: '',
           playerNotes: '',
           linkedUserId,
+          level: 1,
         };
         set((s) => ({ campaign: { ...s.campaign, party: { ...s.campaign.party, players: [...s.campaign.party.players, player] } } }));
         dbUpsertPlayer(player);
