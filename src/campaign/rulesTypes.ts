@@ -95,6 +95,18 @@ export interface CharacterDomainCard {
   inLoadout: boolean;
 }
 
+export interface BeastformOption {
+  id: string;
+  tier: number;
+  name: string;
+  examples: string;
+  traitBonus: string | null;
+  evasionBonus: number | null;
+  attack: string | null;
+  advantages: string[];
+  features: FeatureText[];
+}
+
 export interface AdvancementOption {
   id: string;
   name: string;
@@ -126,4 +138,5 @@ export interface DaggerheartRules {
   weapons: Weapon[];
   armors: Armor[];
   advancementOptions: AdvancementOption[];
+  beastformOptions: BeastformOption[];
 }

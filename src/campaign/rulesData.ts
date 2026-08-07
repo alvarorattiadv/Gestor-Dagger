@@ -3,6 +3,7 @@ import type {
   AdvancementOption,
   Ancestry,
   Armor,
+  BeastformOption,
   CharacterAdvancement,
   Community,
   DaggerClass,
@@ -98,8 +99,22 @@ function advancementOptionFromRow(row: any): AdvancementOption {
   return { id: row.id, name: row.name, slotCost: row.slot_cost, description: row.description, minTier: row.min_tier };
 }
 
+function beastformOptionFromRow(row: any): BeastformOption {
+  return {
+    id: row.id,
+    tier: row.tier,
+    name: row.name,
+    examples: row.examples,
+    traitBonus: row.trait_bonus,
+    evasionBonus: row.evasion_bonus,
+    attack: row.attack,
+    advantages: row.advantages,
+    features: row.features,
+  };
+}
+
 export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
-  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes] = await Promise.all([
+  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes] = await Promise.all([
     supabase.from('domains').select('*'),
     supabase.from('classes').select('*'),
     supabase.from('subclasses').select('*'),
@@ -109,9 +124,10 @@ export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
     supabase.from('weapons').select('*'),
     supabase.from('armors').select('*'),
     supabase.from('advancement_options').select('*'),
+    supabase.from('beastform_options').select('*'),
   ]);
 
-  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes]) {
+  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes]) {
     if (res.error) throw new Error(res.error.message);
   }
 
@@ -125,6 +141,7 @@ export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
     weapons: (weaponsRes.data ?? []).map(weaponFromRow),
     armors: (armorsRes.data ?? []).map(armorFromRow),
     advancementOptions: (advancementsRes.data ?? []).map(advancementOptionFromRow),
+    beastformOptions: (beastformsRes.data ?? []).map(beastformOptionFromRow),
   };
 }
 

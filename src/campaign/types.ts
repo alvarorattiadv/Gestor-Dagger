@@ -162,6 +162,11 @@ export interface Player {
   multiclassClassId?: string;
   multiclassSubclassId?: string;
   multiclassDomainId?: string;
+  beastformId?: string;
+  beastformEvolvedSourceId?: string;
+  beastformHybridSources?: string[];
+  beastformHybridAdvantages?: string[];
+  beastformHybridFeatures?: string[];
 }
 
 export interface Experience {

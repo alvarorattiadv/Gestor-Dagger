@@ -133,6 +133,11 @@ function playerFromRow(row: any): Player {
     multiclassClassId: row.multiclass_class_id ?? undefined,
     multiclassSubclassId: row.multiclass_subclass_id ?? undefined,
     multiclassDomainId: row.multiclass_domain_id ?? undefined,
+    beastformId: row.beastform_id ?? undefined,
+    beastformEvolvedSourceId: row.beastform_evolved_source_id ?? undefined,
+    beastformHybridSources: row.beastform_hybrid_sources ?? [],
+    beastformHybridAdvantages: row.beastform_hybrid_advantages ?? [],
+    beastformHybridFeatures: row.beastform_hybrid_features ?? [],
   };
 }
 
@@ -442,6 +447,11 @@ export async function dbUpsertPlayer(p: Player) {
     multiclass_class_id: p.multiclassClassId ?? null,
     multiclass_subclass_id: p.multiclassSubclassId ?? null,
     multiclass_domain_id: p.multiclassDomainId ?? null,
+    beastform_id: p.beastformId ?? null,
+    beastform_evolved_source_id: p.beastformEvolvedSourceId ?? null,
+    beastform_hybrid_sources: p.beastformHybridSources ?? [],
+    beastform_hybrid_advantages: p.beastformHybridAdvantages ?? [],
+    beastform_hybrid_features: p.beastformHybridFeatures ?? [],
   });
   if (error) logSyncError('upsert player', error);
 }

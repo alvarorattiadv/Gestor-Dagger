@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
-import type { AdvancementOption, CharacterAdvancement, FeatureText } from '../rulesTypes';
+import type { AdvancementOption, BeastformOption, CharacterAdvancement, FeatureText } from '../rulesTypes';
 import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
@@ -76,6 +76,7 @@ export function CharacterDetail() {
   const multiclassDomainOptions = selectedMulticlassClass ? [selectedMulticlassClass.domain1, selectedMulticlassClass.domain2] : [];
   // Multiclass domain cards are capped at half the character's level (rounded up), not the full level.
   const multiclassCardLevelCap = Math.ceil(player.level / 2);
+  const isDruid = selectedClass?.name === 'Druid';
 
   const availableCards = rules.domainCards
     .filter((c) => {
@@ -580,6 +581,11 @@ export function CharacterDetail() {
         </Section>
       )}
 
+      {/* Forma de Fera (só Druida) */}
+      {isDruid && (
+        <BeastformSection player={player} canEdit={canEdit} tier={tier} beastformOptions={rules.beastformOptions} updatePlayer={updatePlayer} />
+      )}
+
       {/* Equipamento */}
       <Section title="Equipamento">
         <div className="space-y-3">
@@ -728,6 +734,266 @@ export function CharacterDetail() {
         setAdvError={setAdvError}
       />
     </div>
+  );
+}
+
+const EVOLVED_NAMES = ['Legendary Beast', 'Mythic Beast'];
+const HYBRID_NAMES = ['Legendary Hybrid', 'Mythic Hybrid'];
+
+const EVOLVED_BONUSES: Record<string, { damageBonus: number; traitBonus: number; evasionBonus: number; dieIncreases: boolean; sourceMaxTier: number }> = {
+  'Legendary Beast': { damageBonus: 6, traitBonus: 1, evasionBonus: 2, dieIncreases: false, sourceMaxTier: 1 },
+  'Mythic Beast': { damageBonus: 9, traitBonus: 2, evasionBonus: 3, dieIncreases: true, sourceMaxTier: 2 },
+};
+
+const HYBRID_RULES: Record<string, { sourceCount: number; sourceMaxTier: number; advantageCount: number; featureCount: number; extraStress: number }> = {
+  'Legendary Hybrid': { sourceCount: 2, sourceMaxTier: 2, advantageCount: 4, featureCount: 2, extraStress: 1 },
+  'Mythic Hybrid': { sourceCount: 3, sourceMaxTier: 3, advantageCount: 5, featureCount: 3, extraStress: 2 },
+};
+
+function dedupeFeatures(features: FeatureText[]): FeatureText[] {
+  const seen = new Set<string>();
+  const result: FeatureText[] = [];
+  for (const f of features) {
+    if (!seen.has(f.name)) {
+      seen.add(f.name);
+      result.push(f);
+    }
+  }
+  return result;
+}
+
+function BeastformStats({ traitBonus, evasionBonus, attack }: { traitBonus: string | null; evasionBonus: number | null; attack: string | null }) {
+  return (
+    <div className="flex flex-wrap gap-3 text-xs text-stone-600">
+      {traitBonus && (
+        <span>
+          <strong>Traço:</strong> {traitBonus}
+        </span>
+      )}
+      {evasionBonus !== null && (
+        <span>
+          <strong>Evasão:</strong> +{evasionBonus}
+        </span>
+      )}
+      {attack && (
+        <span>
+          <strong>Ataque:</strong> {attack}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function BeastformAdvantagesFeatures({ advantages, features }: { advantages: string[]; features: FeatureText[] }) {
+  return (
+    <div className="space-y-1">
+      {advantages.length > 0 && (
+        <p className="text-xs text-stone-600">
+          <strong>Vantagem em:</strong> {advantages.join(', ')}
+        </p>
+      )}
+      {features.map((f) => (
+        <FeatureRow key={f.name} feature={f} />
+      ))}
+    </div>
+  );
+}
+
+function BeastformSection({
+  player,
+  canEdit,
+  tier,
+  beastformOptions,
+  updatePlayer,
+}: {
+  player: Player;
+  canEdit: boolean;
+  tier: number;
+  beastformOptions: BeastformOption[];
+  updatePlayer: (id: string, updater: (p: Player) => Player) => void;
+}) {
+  const optionsForTier = beastformOptions.filter((b) => b.tier <= tier).sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+  const selected = beastformOptions.find((b) => b.id === player.beastformId);
+  const isEvolved = selected ? EVOLVED_NAMES.includes(selected.name) : false;
+  const isHybrid = selected ? HYBRID_NAMES.includes(selected.name) : false;
+  const evolvedRule = selected ? EVOLVED_BONUSES[selected.name] : undefined;
+  const hybridRule = selected ? HYBRID_RULES[selected.name] : undefined;
+
+  const evolvedSourceOptions = evolvedRule ? beastformOptions.filter((b) => b.tier <= evolvedRule.sourceMaxTier && b.traitBonus !== null) : [];
+  const evolvedSource = beastformOptions.find((b) => b.id === player.beastformEvolvedSourceId);
+
+  const hybridSourceOptions = hybridRule ? beastformOptions.filter((b) => b.tier <= hybridRule.sourceMaxTier && b.traitBonus !== null) : [];
+  const hybridSources = (player.beastformHybridSources ?? [])
+    .map((id) => beastformOptions.find((b) => b.id === id))
+    .filter((b): b is BeastformOption => Boolean(b));
+  const advantagePool = [...new Set(hybridSources.flatMap((s) => s.advantages))];
+  const featurePool = dedupeFeatures(hybridSources.flatMap((s) => s.features));
+
+  function handleSelectBeastform(id: string) {
+    updatePlayer(player.id, (p) => ({
+      ...p,
+      beastformId: id || undefined,
+      beastformEvolvedSourceId: undefined,
+      beastformHybridSources: [],
+      beastformHybridAdvantages: [],
+      beastformHybridFeatures: [],
+    }));
+  }
+
+  function toggleHybridSource(id: string) {
+    if (!hybridRule) return;
+    const current = player.beastformHybridSources ?? [];
+    const next = current.includes(id) ? current.filter((x) => x !== id) : current.length < hybridRule.sourceCount ? [...current, id] : current;
+    updatePlayer(player.id, (p) => ({ ...p, beastformHybridSources: next, beastformHybridAdvantages: [], beastformHybridFeatures: [] }));
+  }
+
+  function toggleHybridAdvantage(adv: string) {
+    if (!hybridRule) return;
+    const current = player.beastformHybridAdvantages ?? [];
+    const next = current.includes(adv) ? current.filter((x) => x !== adv) : current.length < hybridRule.advantageCount ? [...current, adv] : current;
+    updatePlayer(player.id, (p) => ({ ...p, beastformHybridAdvantages: next }));
+  }
+
+  function toggleHybridFeature(name: string) {
+    if (!hybridRule) return;
+    const current = player.beastformHybridFeatures ?? [];
+    const next = current.includes(name) ? current.filter((x) => x !== name) : current.length < hybridRule.featureCount ? [...current, name] : current;
+    updatePlayer(player.id, (p) => ({ ...p, beastformHybridFeatures: next }));
+  }
+
+  return (
+    <Section title="Forma de Fera">
+      <p className="text-xs text-stone-500 mb-2">Criatura do seu tier ou menor. Marque uma Stress pra se transformar (regra da classe).</p>
+      <select value={player.beastformId ?? ''} onChange={(e) => handleSelectBeastform(e.target.value)} disabled={!canEdit} className={SELECT_CLASS}>
+        <option value="">Nenhuma (forma normal)</option>
+        {optionsForTier.map((b) => (
+          <option key={b.id} value={b.id}>
+            Tier {b.tier} — {b.name}
+          </option>
+        ))}
+      </select>
+
+      {selected && !isEvolved && !isHybrid && (
+        <div className="mt-3 space-y-2 text-sm">
+          <p className="text-xs text-stone-500">{selected.examples}</p>
+          <BeastformStats traitBonus={selected.traitBonus} evasionBonus={selected.evasionBonus} attack={selected.attack} />
+          <BeastformAdvantagesFeatures advantages={selected.advantages} features={selected.features} />
+        </div>
+      )}
+
+      {selected && isEvolved && evolvedRule && (
+        <div className="mt-3 space-y-2 text-sm">
+          <p className="text-xs text-stone-500">
+            Evoluída: escolha uma forma de Tier 1{evolvedRule.sourceMaxTier > 1 ? ' ou 2' : ''} pra virar uma versão maior e mais poderosa dela.
+          </p>
+          <select
+            value={player.beastformEvolvedSourceId ?? ''}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, beastformEvolvedSourceId: e.target.value || undefined }))}
+            disabled={!canEdit}
+            className={SELECT_CLASS}
+          >
+            <option value="">Escolher forma base...</option>
+            {evolvedSourceOptions.map((b) => (
+              <option key={b.id} value={b.id}>
+                Tier {b.tier} — {b.name}
+              </option>
+            ))}
+          </select>
+          {evolvedSource && (
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-2 space-y-1">
+              <p className="text-xs font-semibold text-stone-700">Estatísticas combinadas</p>
+              <p className="text-xs text-stone-600">
+                Traço: {evolvedSource.traitBonus} (base), mais +{evolvedRule.traitBonus} da evolução
+              </p>
+              <p className="text-xs text-stone-600">
+                Evasão: +{evolvedSource.evasionBonus} (base), mais +{evolvedRule.evasionBonus} da evolução
+              </p>
+              <p className="text-xs text-stone-600">
+                Ataque: {evolvedSource.attack}, +{evolvedRule.damageBonus} no dano
+                {evolvedRule.dieIncreases ? ', dado de dano aumenta um passo (d6→d8, d8→d10...)' : ''}
+              </p>
+              <BeastformAdvantagesFeatures advantages={evolvedSource.advantages} features={evolvedSource.features} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {selected && isHybrid && hybridRule && (
+        <div className="mt-3 space-y-3 text-sm">
+          <p className="text-xs text-stone-500">
+            Híbrida: marca {hybridRule.extraStress} Stress a mais pra se transformar. Escolha {hybridRule.sourceCount} formas de até Tier {hybridRule.sourceMaxTier}, depois
+            escolha {hybridRule.advantageCount} vantagens e {hybridRule.featureCount} talentos do conjunto combinado delas.
+          </p>
+          <BeastformStats traitBonus={selected.traitBonus} evasionBonus={selected.evasionBonus} attack={selected.attack} />
+
+          <div>
+            <p className="text-xs font-semibold text-stone-700 mb-1">
+              Formas-fonte ({(player.beastformHybridSources ?? []).length}/{hybridRule.sourceCount})
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1">
+              {hybridSourceOptions.map((b) => {
+                const isChecked = (player.beastformHybridSources ?? []).includes(b.id);
+                return (
+                  <label
+                    key={b.id}
+                    className={`flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 ${isChecked ? 'border-violet-400 bg-violet-50' : 'border-stone-200'}`}
+                  >
+                    <input type="checkbox" checked={isChecked} disabled={!canEdit} onChange={() => toggleHybridSource(b.id)} />
+                    {b.name}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {advantagePool.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-stone-700 mb-1">
+                Vantagens ({(player.beastformHybridAdvantages ?? []).length}/{hybridRule.advantageCount})
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {advantagePool.map((adv) => {
+                  const isChecked = (player.beastformHybridAdvantages ?? []).includes(adv);
+                  return (
+                    <label
+                      key={adv}
+                      className={`flex items-center gap-1 text-xs border rounded-full px-2 py-0.5 ${isChecked ? 'border-violet-400 bg-violet-50' : 'border-stone-200'}`}
+                    >
+                      <input type="checkbox" checked={isChecked} disabled={!canEdit} onChange={() => toggleHybridAdvantage(adv)} />
+                      {adv}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {featurePool.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-stone-700 mb-1">
+                Talentos ({(player.beastformHybridFeatures ?? []).length}/{hybridRule.featureCount})
+              </p>
+              <div className="space-y-1">
+                {featurePool.map((f) => {
+                  const isChecked = (player.beastformHybridFeatures ?? []).includes(f.name);
+                  return (
+                    <label
+                      key={f.name}
+                      className={`flex items-start gap-1.5 text-xs border rounded-md px-2 py-1 ${isChecked ? 'border-violet-400 bg-violet-50' : 'border-stone-200'}`}
+                    >
+                      <input type="checkbox" checked={isChecked} disabled={!canEdit} onChange={() => toggleHybridFeature(f.name)} className="mt-0.5" />
+                      <span>
+                        <strong>{f.name}:</strong> {f.text}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </Section>
   );
 }
 
