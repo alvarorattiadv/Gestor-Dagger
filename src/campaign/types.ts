@@ -159,6 +159,9 @@ export interface Player {
   hope?: number;
   hopeMax?: number;
   experiences?: Experience[];
+  multiclassClassId?: string;
+  multiclassSubclassId?: string;
+  multiclassDomainId?: string;
 }
 
 export interface Experience {

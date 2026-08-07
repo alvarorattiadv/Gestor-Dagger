@@ -68,9 +68,21 @@ export function CharacterDetail() {
   const classDomains = selectedClass ? [selectedClass.domain1, selectedClass.domain2] : [];
   const tier = tierForLevel(player.level);
   const myAdvancements = advancementsByCharacter[player.id] ?? [];
+  const hasMulticlassed = myAdvancements.some((a) => a.optionId === 'multiclass');
+  const multiclassClassOptions = rules.classes.filter((c) => c.id !== player.classId);
+  const selectedMulticlassClass = hasMulticlassed ? rules.classes.find((c) => c.id === player.multiclassClassId) : undefined;
+  const multiclassSubclassOptions = selectedMulticlassClass ? rules.subclasses.filter((s) => s.classId === selectedMulticlassClass.id) : [];
+  const selectedMulticlassSubclass = hasMulticlassed ? rules.subclasses.find((s) => s.id === player.multiclassSubclassId) : undefined;
+  const multiclassDomainOptions = selectedMulticlassClass ? [selectedMulticlassClass.domain1, selectedMulticlassClass.domain2] : [];
+  // Multiclass domain cards are capped at half the character's level (rounded up), not the full level.
+  const multiclassCardLevelCap = Math.ceil(player.level / 2);
 
   const availableCards = rules.domainCards
-    .filter((c) => classDomains.includes(c.domain) && c.level <= player.level)
+    .filter((c) => {
+      if (classDomains.includes(c.domain) && c.level <= player.level) return true;
+      if (hasMulticlassed && player.multiclassDomainId && c.domain === player.multiclassDomainId && c.level <= multiclassCardLevelCap) return true;
+      return false;
+    })
     .sort((a, b) => a.level - b.level || a.domain.localeCompare(b.domain) || a.name.localeCompare(b.name));
 
   const myCardIds = new Set(
@@ -124,6 +136,17 @@ export function CharacterDetail() {
     updatePlayer(player.id, (p) => ({ ...p, classId: classId || undefined, subclassId: stillValidSubclass ? p.subclassId : undefined }));
   }
 
+  function handleMulticlassChange(classId: string) {
+    if (!player) return;
+    const stillValidSubclass = rules?.subclasses.some((s) => s.id === player.multiclassSubclassId && s.classId === classId);
+    updatePlayer(player.id, (p) => ({
+      ...p,
+      multiclassClassId: classId || undefined,
+      multiclassSubclassId: stillValidSubclass ? p.multiclassSubclassId : undefined,
+      multiclassDomainId: undefined,
+    }));
+  }
+
   const primaryWeapons = rules.weapons.filter((w) => w.tableType === 'primary' && w.tier <= tier);
   const secondaryWeapons = rules.weapons.filter((w) => w.tableType === 'secondary' && w.tier <= tier);
   const armorOptions = rules.armors.filter((a) => a.tier <= tier);
@@ -133,7 +156,7 @@ export function CharacterDetail() {
   const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
   const hasBareBones = myCards.some((c) => c.name === 'BARE BONES');
-  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones, myAdvancements);
+  const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones, myAdvancements, selectedMulticlassSubclass);
 
   function setManual(field: keyof Pick<Player, 'bonusEvasion' | 'bonusHitPoints' | 'bonusStress' | 'bonusMajorThreshold' | 'bonusSevereThreshold'>, value: number) {
     if (!player) return;
@@ -491,6 +514,71 @@ export function CharacterDetail() {
           </div>
         )}
       </Section>
+
+      {/* Multiclasse */}
+      {hasMulticlassed && (
+        <Section title="Multiclasse">
+          <p className="text-xs text-stone-500 mb-2">
+            Registrado como avanço de nível. Escolha a classe adicional, o único domínio dela que você passa a ter acesso, e uma subclasse (pra pegar a
+            fundação). <strong>Não ganha a habilidade de Esperança dessa classe</strong> — só a original conta.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select value={player.multiclassClassId ?? ''} onChange={(e) => handleMulticlassChange(e.target.value)} disabled={!canEdit} className={SELECT_CLASS}>
+              <option value="">Escolher classe adicional...</option>
+              {multiclassClassOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
+              value={player.multiclassDomainId ?? ''}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, multiclassDomainId: e.target.value || undefined }))}
+              disabled={!canEdit || !selectedMulticlassClass}
+              className={SELECT_CLASS}
+            >
+              <option value="">Escolher domínio...</option>
+              {multiclassDomainOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <select
+            value={player.multiclassSubclassId ?? ''}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, multiclassSubclassId: e.target.value || undefined }))}
+            disabled={!canEdit || !selectedMulticlassClass}
+            className={`${SELECT_CLASS} mt-2`}
+          >
+            <option value="">Escolher subclasse (pra fundação)...</option>
+            {multiclassSubclassOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+
+          {selectedMulticlassClass && (
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="text-xs text-stone-500">{selectedMulticlassClass.description}</p>
+              <p className="text-xs font-semibold text-stone-700">Feature de classe</p>
+              {selectedMulticlassClass.classFeatures.map((f) => (
+                <FeatureRow key={f.name} feature={f} />
+              ))}
+            </div>
+          )}
+          {selectedMulticlassSubclass && (
+            <div className="mt-3 pt-3 border-t border-stone-100 space-y-2 text-sm">
+              <p className="text-xs text-stone-500">{selectedMulticlassSubclass.blurb}</p>
+              <p className="text-xs font-semibold text-stone-700">Fundação</p>
+              {selectedMulticlassSubclass.foundation.map((f) => (
+                <FeatureRow key={f.name} feature={f} />
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* Equipamento */}
       <Section title="Equipamento">

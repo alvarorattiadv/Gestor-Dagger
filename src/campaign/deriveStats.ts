@@ -106,14 +106,17 @@ export function deriveCharacterStats(
   selectedSubclass: Subclass | undefined,
   hasBareBones: boolean,
   advancements: CharacterAdvancement[],
+  multiclassSubclass?: Subclass,
 ): DerivedStats {
   const subclassCardCount = countAdvancement(advancements, 'upgraded-subclass-card');
   const hasSpecialization = subclassCardCount >= 1;
   const hasMastery = subclassCardCount >= 2;
 
-  const subclassTierFeatures: FeatureText[] = selectedSubclass
-    ? [...selectedSubclass.foundation, ...(hasSpecialization ? selectedSubclass.specialization : []), ...(hasMastery ? selectedSubclass.mastery : [])]
-    : [];
+  // Multiclassing only grants the foundation of the secondary subclass, never specialization/mastery.
+  const subclassTierFeatures: FeatureText[] = [
+    ...(selectedSubclass ? [...selectedSubclass.foundation, ...(hasSpecialization ? selectedSubclass.specialization : []), ...(hasMastery ? selectedSubclass.mastery : [])] : []),
+    ...(multiclassSubclass ? multiclassSubclass.foundation : []),
+  ];
 
   const evasionBase = selectedClass?.startingEvasion ?? 0;
   const evasionArmor = evasionModFromArmorFeature(selectedArmor?.feature);

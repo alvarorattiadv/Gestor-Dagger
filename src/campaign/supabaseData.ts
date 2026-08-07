@@ -130,6 +130,9 @@ function playerFromRow(row: any): Player {
     hope: row.hope ?? 2,
     hopeMax: row.hope_max ?? 6,
     experiences: row.experiences ?? [],
+    multiclassClassId: row.multiclass_class_id ?? undefined,
+    multiclassSubclassId: row.multiclass_subclass_id ?? undefined,
+    multiclassDomainId: row.multiclass_domain_id ?? undefined,
   };
 }
 
@@ -436,6 +439,9 @@ export async function dbUpsertPlayer(p: Player) {
     hope: p.hope ?? 2,
     hope_max: p.hopeMax ?? 6,
     experiences: p.experiences ?? [],
+    multiclass_class_id: p.multiclassClassId ?? null,
+    multiclass_subclass_id: p.multiclassSubclassId ?? null,
+    multiclass_domain_id: p.multiclassDomainId ?? null,
   });
   if (error) logSyncError('upsert player', error);
 }

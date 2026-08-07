@@ -6,7 +6,6 @@ import { PendingApprovals } from '../components/PendingApprovals';
 
 export function Party() {
   const party = useCampaignStore((s) => s.campaign.party);
-  const setHope = useCampaignStore((s) => s.setHope);
   const setFear = useCampaignStore((s) => s.setFear);
   const addPlayer = useCampaignStore((s) => s.addPlayer);
   const updatePlayer = useCampaignStore((s) => s.updatePlayer);
@@ -18,13 +17,14 @@ export function Party() {
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-stone-900">Grupo & Recursos</h2>
-        <p className="text-sm text-stone-500">Acompanhe Esperança e Medo entre sessões, e mantenha uma referência rápida do grupo.</p>
+        <p className="text-sm text-stone-500">
+          Acompanhe o Medo do mestre e mantenha uma referência rápida do grupo. Esperança é individual — acompanhe na ficha de cada personagem.
+        </p>
       </div>
 
       {isGM && <PendingApprovals />}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ResourceCounter label="Esperança do grupo" value={party.hope} onChange={setHope} dotClass="bg-amber-400" />
+      <div className="max-w-sm">
         <ResourceCounter label="Medo do mestre" value={party.fear} onChange={setFear} dotClass="bg-violet-600" max={12} />
       </div>
 
