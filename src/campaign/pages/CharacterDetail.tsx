@@ -723,6 +723,7 @@ export function CharacterDetail() {
         addAdvancement={addAdvancement}
         removeAdvancement={removeAdvancement}
         updatePlayer={updatePlayer}
+        hasMulticlassed={hasMulticlassed}
         advError={advError}
         setAdvError={setAdvError}
       />
@@ -740,6 +741,7 @@ function AdvancementsSection({
   addAdvancement,
   removeAdvancement,
   updatePlayer,
+  hasMulticlassed,
   advError,
   setAdvError,
 }: {
@@ -747,17 +749,20 @@ function AdvancementsSection({
   canEdit: boolean;
   advancements: CharacterAdvancement[];
   advancementOptions: AdvancementOption[];
-  addAdvancement: (characterId: string, level: number, optionId: string, detail: string) => Promise<void>;
+  addAdvancement: (characterId: string, level: number, optionId: string, detail: string, appliesTo?: 'primary' | 'multiclass') => Promise<void>;
   removeAdvancement: (characterId: string, advancementId: string) => Promise<void>;
   updatePlayer: (id: string, updater: (p: Player) => Player) => void;
+  hasMulticlassed: boolean;
   advError: string;
   setAdvError: (v: string) => void;
 }) {
   const [newLevel, setNewLevel] = useState(Math.max(2, player.level));
   const [pick1, setPick1] = useState('');
   const [detail1, setDetail1] = useState('');
+  const [target1, setTarget1] = useState<'primary' | 'multiclass'>('primary');
   const [pick2, setPick2] = useState('');
   const [detail2, setDetail2] = useState('');
+  const [target2, setTarget2] = useState<'primary' | 'multiclass'>('primary');
   const [saving, setSaving] = useState(false);
 
   const newTier = tierForLevel(newLevel);
@@ -792,13 +797,15 @@ function AdvancementsSection({
     }
     setAdvError('');
     setSaving(true);
-    if (pick1) await addAdvancement(player.id, newLevel, pick1, detail1);
-    if (!pick1UsesBoth && pick2) await addAdvancement(player.id, newLevel, pick2, detail2);
+    if (pick1) await addAdvancement(player.id, newLevel, pick1, detail1, pick1 === 'upgraded-subclass-card' ? target1 : undefined);
+    if (!pick1UsesBoth && pick2) await addAdvancement(player.id, newLevel, pick2, detail2, pick2 === 'upgraded-subclass-card' ? target2 : undefined);
     setSaving(false);
     setPick1('');
     setDetail1('');
+    setTarget1('primary');
     setPick2('');
     setDetail2('');
+    setTarget2('primary');
   }
 
   return (
@@ -817,7 +824,12 @@ function AdvancementsSection({
                 return (
                   <div key={a.id} className="flex items-start justify-between gap-2 bg-stone-50 border border-stone-200 rounded-md px-2 py-1.5">
                     <div>
-                      <p className="text-xs font-semibold text-stone-800">{option?.name ?? a.optionId}</p>
+                      <p className="text-xs font-semibold text-stone-800">
+                        {option?.name ?? a.optionId}
+                        {a.optionId === 'upgraded-subclass-card' && (
+                          <span className="ml-1.5 font-normal text-[10px] text-violet-600">({a.appliesTo === 'multiclass' ? 'multiclasse' : 'original'})</span>
+                        )}
+                      </p>
                       {a.detail && <p className="text-xs text-stone-500">{a.detail}</p>}
                     </div>
                     {canEdit && (
@@ -870,6 +882,12 @@ function AdvancementsSection({
                   </option>
                 ))}
               </select>
+              {pick1 === 'upgraded-subclass-card' && hasMulticlassed && (
+                <select value={target1} onChange={(e) => setTarget1(e.target.value as 'primary' | 'multiclass')} className={SELECT_CLASS}>
+                  <option value="primary">Na subclasse original</option>
+                  <option value="multiclass">Na subclasse de multiclasse (só chega até especialização)</option>
+                </select>
+              )}
               <textarea
                 value={detail1}
                 onChange={(e) => setDetail1(e.target.value)}
@@ -894,6 +912,12 @@ function AdvancementsSection({
                       </option>
                     ))}
                 </select>
+                {pick2 === 'upgraded-subclass-card' && hasMulticlassed && (
+                  <select value={target2} onChange={(e) => setTarget2(e.target.value as 'primary' | 'multiclass')} className={SELECT_CLASS}>
+                    <option value="primary">Na subclasse original</option>
+                    <option value="multiclass">Na subclasse de multiclasse (só chega até especialização)</option>
+                  </select>
+                )}
                 <textarea
                   value={detail2}
                   onChange={(e) => setDetail2(e.target.value)}

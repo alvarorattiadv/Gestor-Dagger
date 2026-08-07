@@ -103,6 +103,8 @@ export interface AdvancementOption {
   minTier: number;
 }
 
+export type AdvancementTarget = 'primary' | 'multiclass';
+
 export interface CharacterAdvancement {
   id: string;
   characterId: string;
@@ -110,6 +112,8 @@ export interface CharacterAdvancement {
   optionId: string;
   detail: string;
   createdAt: string;
+  /** Only meaningful for the "upgraded-subclass-card" option: which subclass this pick advanced. Undefined = primary. */
+  appliesTo?: AdvancementTarget;
 }
 
 export interface DaggerheartRules {

@@ -165,7 +165,15 @@ export async function setDomainCardLoadout(characterId: string, domainCardId: st
 }
 
 function advancementFromRow(row: any): CharacterAdvancement {
-  return { id: row.id, characterId: row.character_id, level: row.level, optionId: row.option_id, detail: row.detail, createdAt: row.created_at };
+  return {
+    id: row.id,
+    characterId: row.character_id,
+    level: row.level,
+    optionId: row.option_id,
+    detail: row.detail,
+    createdAt: row.created_at,
+    appliesTo: row.applies_to ?? undefined,
+  };
 }
 
 export async function fetchCharacterAdvancements(characterId: string): Promise<CharacterAdvancement[]> {
@@ -179,10 +187,16 @@ export async function fetchCharacterAdvancements(characterId: string): Promise<C
   return (data ?? []).map(advancementFromRow);
 }
 
-export async function addCharacterAdvancement(characterId: string, level: number, optionId: string, detail: string): Promise<CharacterAdvancement> {
+export async function addCharacterAdvancement(
+  characterId: string,
+  level: number,
+  optionId: string,
+  detail: string,
+  appliesTo?: 'primary' | 'multiclass',
+): Promise<CharacterAdvancement> {
   const { data, error } = await supabase
     .from('character_advancements')
-    .insert({ character_id: characterId, level, option_id: optionId, detail })
+    .insert({ character_id: characterId, level, option_id: optionId, detail, applies_to: appliesTo ?? null })
     .select('*')
     .single();
   if (error) throw new Error(error.message);

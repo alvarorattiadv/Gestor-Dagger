@@ -9,6 +9,11 @@ function countAdvancement(advancements: CharacterAdvancement[], optionId: string
   return advancements.filter((a) => a.optionId === optionId).length;
 }
 
+/** "upgraded-subclass-card" picks, split by which subclass they targeted (undefined/'primary' = the character's original subclass). */
+function countSubclassCardAdvancement(advancements: CharacterAdvancement[], target: 'primary' | 'multiclass'): number {
+  return advancements.filter((a) => a.optionId === 'upgraded-subclass-card' && (a.appliesTo ?? 'primary') === target).length;
+}
+
 function evasionModFromArmorFeature(feature: string | undefined): number {
   if (!feature) return 0;
   const m = feature.match(/([+−]\d+)\s+to\s+(?:all character traits and\s+)?Evasion/);
@@ -108,14 +113,17 @@ export function deriveCharacterStats(
   advancements: CharacterAdvancement[],
   multiclassSubclass?: Subclass,
 ): DerivedStats {
-  const subclassCardCount = countAdvancement(advancements, 'upgraded-subclass-card');
-  const hasSpecialization = subclassCardCount >= 1;
-  const hasMastery = subclassCardCount >= 2;
+  const primarySubclassCardCount = countSubclassCardAdvancement(advancements, 'primary');
+  const hasSpecialization = primarySubclassCardCount >= 1;
+  const hasMastery = primarySubclassCardCount >= 2;
 
-  // Multiclassing only grants the foundation of the secondary subclass, never specialization/mastery.
+  // The multiclass subclass can be pushed to specialization via its own "upgraded subclass card" picks, but never mastery.
+  const multiclassCardCount = countSubclassCardAdvancement(advancements, 'multiclass');
+  const hasMulticlassSpecialization = multiclassCardCount >= 1;
+
   const subclassTierFeatures: FeatureText[] = [
     ...(selectedSubclass ? [...selectedSubclass.foundation, ...(hasSpecialization ? selectedSubclass.specialization : []), ...(hasMastery ? selectedSubclass.mastery : [])] : []),
-    ...(multiclassSubclass ? multiclassSubclass.foundation : []),
+    ...(multiclassSubclass ? [...multiclassSubclass.foundation, ...(hasMulticlassSpecialization ? multiclassSubclass.specialization : [])] : []),
   ];
 
   const evasionBase = selectedClass?.startingEvasion ?? 0;
@@ -229,6 +237,15 @@ export function deriveCharacterStats(
         if (/permanent\s+[+−]\d+\s+bonus to your (damage thresholds|Evasion|Severe damage threshold)/i.test(f.text)) {
           reminders.push(`${selectedSubclass.name} (${label}, registre o avanço "Carta de subclasse melhorada" ao subir de nível para ativar) — ${f.name}: ${f.text}`);
         }
+      }
+    }
+  }
+  if (multiclassSubclass && !hasMulticlassSpecialization) {
+    for (const f of multiclassSubclass.specialization) {
+      if (/permanent\s+[+−]\d+\s+bonus to your (damage thresholds|Evasion|Severe damage threshold)/i.test(f.text)) {
+        reminders.push(
+          `${multiclassSubclass.name} — multiclasse (especialização, registre o avanço "Carta de subclasse melhorada" marcando "Multiclasse" para ativar; nunca chega a maestria) — ${f.name}: ${f.text}`,
+        );
       }
     }
   }

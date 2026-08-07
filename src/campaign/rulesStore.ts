@@ -29,7 +29,7 @@ interface RulesState {
   releaseCard: (characterId: string, domainCardId: string) => Promise<void>;
   setCardLoadout: (characterId: string, domainCardId: string, inLoadout: boolean) => Promise<void>;
   loadAdvancements: (characterId: string) => Promise<void>;
-  addAdvancement: (characterId: string, level: number, optionId: string, detail: string) => Promise<void>;
+  addAdvancement: (characterId: string, level: number, optionId: string, detail: string, appliesTo?: 'primary' | 'multiclass') => Promise<void>;
   removeAdvancement: (characterId: string, advancementId: string) => Promise<void>;
 }
 
@@ -84,8 +84,8 @@ export const useRulesStore = create<RulesState>((set, get) => ({
     }
   },
 
-  addAdvancement: async (characterId, level, optionId, detail) => {
-    const created = await addCharacterAdvancement(characterId, level, optionId, detail);
+  addAdvancement: async (characterId, level, optionId, detail, appliesTo) => {
+    const created = await addCharacterAdvancement(characterId, level, optionId, detail, appliesTo);
     set((s) => ({ advancementsByCharacter: { ...s.advancementsByCharacter, [characterId]: [...(s.advancementsByCharacter[characterId] ?? []), created] } }));
   },
 
