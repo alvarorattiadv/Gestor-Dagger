@@ -138,6 +138,15 @@ function playerFromRow(row: any): Player {
     beastformHybridSources: row.beastform_hybrid_sources ?? [],
     beastformHybridAdvantages: row.beastform_hybrid_advantages ?? [],
     beastformHybridFeatures: row.beastform_hybrid_features ?? [],
+    companionName: row.companion_name ?? '',
+    companionEvasionBase: row.companion_evasion_base ?? 10,
+    companionStressBase: row.companion_stress_base ?? 3,
+    companionMarkedStress: row.companion_marked_stress ?? 0,
+    companionAttack: row.companion_attack ?? '',
+    companionDamageDie: row.companion_damage_die ?? 'd6',
+    companionRange: row.companion_range ?? 'Melee',
+    companionExperiences: row.companion_experiences ?? [],
+    companionAdvancements: row.companion_advancements ?? [],
   };
 }
 
@@ -452,6 +461,15 @@ export async function dbUpsertPlayer(p: Player) {
     beastform_hybrid_sources: p.beastformHybridSources ?? [],
     beastform_hybrid_advantages: p.beastformHybridAdvantages ?? [],
     beastform_hybrid_features: p.beastformHybridFeatures ?? [],
+    companion_name: p.companionName ?? '',
+    companion_evasion_base: p.companionEvasionBase ?? 10,
+    companion_stress_base: p.companionStressBase ?? 3,
+    companion_marked_stress: p.companionMarkedStress ?? 0,
+    companion_attack: p.companionAttack ?? '',
+    companion_damage_die: p.companionDamageDie ?? 'd6',
+    companion_range: p.companionRange ?? 'Melee',
+    companion_experiences: p.companionExperiences ?? [],
+    companion_advancements: p.companionAdvancements ?? [],
   });
   if (error) logSyncError('upsert player', error);
 }

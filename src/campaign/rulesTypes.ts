@@ -115,6 +115,18 @@ export interface AdvancementOption {
   minTier: number;
 }
 
+export interface CompanionOption {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface CompanionAdvancement {
+  level: number;
+  optionId: string;
+  detail: string;
+}
+
 export type AdvancementTarget = 'primary' | 'multiclass';
 
 export interface CharacterAdvancement {
@@ -139,4 +151,5 @@ export interface DaggerheartRules {
   armors: Armor[];
   advancementOptions: AdvancementOption[];
   beastformOptions: BeastformOption[];
+  companionOptions: CompanionOption[];
 }

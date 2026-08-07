@@ -6,6 +6,7 @@ import type {
   BeastformOption,
   CharacterAdvancement,
   Community,
+  CompanionOption,
   DaggerClass,
   DaggerheartRules,
   Domain,
@@ -113,21 +114,27 @@ function beastformOptionFromRow(row: any): BeastformOption {
   };
 }
 
-export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
-  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes] = await Promise.all([
-    supabase.from('domains').select('*'),
-    supabase.from('classes').select('*'),
-    supabase.from('subclasses').select('*'),
-    supabase.from('domain_cards').select('*'),
-    supabase.from('ancestries').select('*'),
-    supabase.from('communities').select('*'),
-    supabase.from('weapons').select('*'),
-    supabase.from('armors').select('*'),
-    supabase.from('advancement_options').select('*'),
-    supabase.from('beastform_options').select('*'),
-  ]);
+function companionOptionFromRow(row: any): CompanionOption {
+  return { id: row.id, name: row.name, description: row.description };
+}
 
-  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes]) {
+export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
+  const [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes, companionsRes] =
+    await Promise.all([
+      supabase.from('domains').select('*'),
+      supabase.from('classes').select('*'),
+      supabase.from('subclasses').select('*'),
+      supabase.from('domain_cards').select('*'),
+      supabase.from('ancestries').select('*'),
+      supabase.from('communities').select('*'),
+      supabase.from('weapons').select('*'),
+      supabase.from('armors').select('*'),
+      supabase.from('advancement_options').select('*'),
+      supabase.from('beastform_options').select('*'),
+      supabase.from('companion_level_options').select('*'),
+    ]);
+
+  for (const res of [domainsRes, classesRes, subclassesRes, cardsRes, ancestriesRes, communitiesRes, weaponsRes, armorsRes, advancementsRes, beastformsRes, companionsRes]) {
     if (res.error) throw new Error(res.error.message);
   }
 
@@ -142,6 +149,7 @@ export async function fetchDaggerheartRules(): Promise<DaggerheartRules> {
     armors: (armorsRes.data ?? []).map(armorFromRow),
     advancementOptions: (advancementsRes.data ?? []).map(advancementOptionFromRow),
     beastformOptions: (beastformsRes.data ?? []).map(beastformOptionFromRow),
+    companionOptions: (companionsRes.data ?? []).map(companionOptionFromRow),
   };
 }
 

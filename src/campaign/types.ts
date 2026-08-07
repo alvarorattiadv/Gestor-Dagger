@@ -167,11 +167,26 @@ export interface Player {
   beastformHybridSources?: string[];
   beastformHybridAdvantages?: string[];
   beastformHybridFeatures?: string[];
+  companionName?: string;
+  companionEvasionBase?: number;
+  companionStressBase?: number;
+  companionMarkedStress?: number;
+  companionAttack?: string;
+  companionDamageDie?: string;
+  companionRange?: string;
+  companionExperiences?: Experience[];
+  companionAdvancements?: CompanionAdvancement[];
 }
 
 export interface Experience {
   name: string;
   modifier: number;
+}
+
+export interface CompanionAdvancement {
+  level: number;
+  optionId: string;
+  detail: string;
 }
 
 export interface PartyResources {

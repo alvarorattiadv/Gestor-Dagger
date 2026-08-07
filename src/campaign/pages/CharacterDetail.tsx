@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
-import type { AdvancementOption, BeastformOption, CharacterAdvancement, FeatureText } from '../rulesTypes';
+import type { AdvancementOption, BeastformOption, CharacterAdvancement, CompanionOption, FeatureText } from '../rulesTypes';
 import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
@@ -77,6 +77,7 @@ export function CharacterDetail() {
   // Multiclass domain cards are capped at half the character's level (rounded up), not the full level.
   const multiclassCardLevelCap = Math.ceil(player.level / 2);
   const isDruid = selectedClass?.name === 'Druid';
+  const isBeastbound = selectedSubclass?.name === 'Beastbound' || selectedMulticlassSubclass?.name === 'Beastbound';
 
   const availableCards = rules.domainCards
     .filter((c) => {
@@ -586,6 +587,11 @@ export function CharacterDetail() {
         <BeastformSection player={player} canEdit={canEdit} tier={tier} beastformOptions={rules.beastformOptions} updatePlayer={updatePlayer} />
       )}
 
+      {/* Companheiro (só Beastbound) */}
+      {isBeastbound && (
+        <CompanionSection player={player} canEdit={canEdit} companionOptions={rules.companionOptions} updatePlayer={updatePlayer} />
+      )}
+
       {/* Equipamento */}
       <Section title="Equipamento">
         <div className="space-y-3">
@@ -993,6 +999,261 @@ function BeastformSection({
           )}
         </div>
       )}
+    </Section>
+  );
+}
+
+const DAMAGE_DICE = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+const RANGES = ['Melee', 'Very Close', 'Close', 'Far', 'Very Far'];
+
+function CompanionSection({
+  player,
+  canEdit,
+  companionOptions,
+  updatePlayer,
+}: {
+  player: Player;
+  canEdit: boolean;
+  companionOptions: CompanionOption[];
+  updatePlayer: (id: string, updater: (p: Player) => Player) => void;
+}) {
+  const [newLevel, setNewLevel] = useState(2);
+  const [newOptionId, setNewOptionId] = useState('');
+  const [newDetail, setNewDetail] = useState('');
+
+  const advancements = player.companionAdvancements ?? [];
+  const awareCount = advancements.filter((a) => a.optionId === 'aware').length;
+  const resilientCount = advancements.filter((a) => a.optionId === 'resilient').length;
+  const evasionBase = player.companionEvasionBase ?? 10;
+  const evasionTotal = evasionBase + 2 * awareCount;
+  const stressBase = player.companionStressBase ?? 3;
+  const stressTotal = stressBase + resilientCount;
+  const experiences = player.companionExperiences ?? [];
+
+  function handleAddAdvancement() {
+    if (!newOptionId) return;
+    updatePlayer(player.id, (p) => ({
+      ...p,
+      companionAdvancements: [...(p.companionAdvancements ?? []), { level: newLevel, optionId: newOptionId, detail: newDetail }],
+    }));
+    setNewOptionId('');
+    setNewDetail('');
+  }
+
+  function handleRemoveAdvancement(index: number) {
+    updatePlayer(player.id, (p) => ({ ...p, companionAdvancements: (p.companionAdvancements ?? []).filter((_, i) => i !== index) }));
+  }
+
+  return (
+    <Section title="Companheiro">
+      <p className="text-xs text-stone-500 mb-3">
+        Ficha do companheiro do Ranger (Beastbound). A cada nível do personagem, escolha uma opção de evolução abaixo pra ele — especialização e maestria
+        da subclasse dão escolhas extras.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+        <input
+          value={player.companionName ?? ''}
+          onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionName: e.target.value }))}
+          disabled={!canEdit}
+          placeholder="Nome do companheiro"
+          className={`border border-stone-300 rounded-md px-2 py-1.5 text-sm font-semibold ${GENERAL_FIELD_DISABLED_CLASS}`}
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-stone-500 shrink-0">Evasão base</label>
+          <input
+            type="number"
+            value={evasionBase}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionEvasionBase: parseInt(e.target.value, 10) || 0 }))}
+            disabled={!canEdit}
+            className="w-16 border border-stone-300 rounded-md px-2 py-1 text-sm"
+          />
+          <span className="text-xs text-stone-400">
+            total: {evasionTotal} {awareCount > 0 && `(+${2 * awareCount} de Aware)`}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+        <textarea
+          value={player.companionAttack ?? ''}
+          onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionAttack: e.target.value }))}
+          disabled={!canEdit}
+          placeholder="Descrição do ataque padrão"
+          className={`border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+          rows={2}
+        />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-stone-500 shrink-0 w-16">Dado de dano</label>
+            <select
+              value={player.companionDamageDie ?? 'd6'}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionDamageDie: e.target.value }))}
+              disabled={!canEdit}
+              className="flex-1 border border-stone-300 rounded-md px-2 py-1 text-sm"
+            >
+              {DAMAGE_DICE.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-stone-500 shrink-0 w-16">Alcance</label>
+            <select
+              value={player.companionRange ?? 'Melee'}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionRange: e.target.value }))}
+              disabled={!canEdit}
+              className="flex-1 border border-stone-300 rounded-md px-2 py-1 text-sm"
+            >
+              {RANGES.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="text-[11px] text-stone-400 italic">"Vicious" aumenta dado OU alcance em um passo — ajuste manualmente qual dos dois ao pegar.</p>
+        </div>
+      </div>
+
+      <div className="mb-3">
+        <p className="text-xs font-medium text-stone-600 mb-1">
+          Stress {resilientCount > 0 && <span className="text-stone-400">(base {stressBase} + {resilientCount} de Resilient)</span>}
+        </p>
+        <PipTracker
+          label="Stress do companheiro"
+          total={stressTotal}
+          marked={player.companionMarkedStress ?? 0}
+          onToggle={(i) => updatePlayer(player.id, (p) => ({ ...p, companionMarkedStress: togglePip(i, p.companionMarkedStress ?? 0) }))}
+          colorClass="bg-amber-500 border-amber-600"
+          disabled={!canEdit}
+        />
+        {canEdit && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[11px] text-stone-400">Base:</span>
+            <input
+              type="number"
+              min={0}
+              value={stressBase}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, companionStressBase: Math.max(0, parseInt(e.target.value, 10) || 0) }))}
+              className="w-14 border border-stone-300 rounded-md px-1.5 py-0.5 text-xs"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="mb-3">
+        <p className="text-xs font-medium text-stone-600 mb-1">Experiências do companheiro ({experiences.length})</p>
+        <div className="space-y-2">
+          {experiences.map((exp, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                value={exp.name}
+                onChange={(e) =>
+                  updatePlayer(player.id, (p) => ({
+                    ...p,
+                    companionExperiences: (p.companionExperiences ?? []).map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)),
+                  }))
+                }
+                disabled={!canEdit}
+                placeholder="Ex: Faro Apurado"
+                className={`flex-1 border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+              />
+              <input
+                type="number"
+                value={exp.modifier}
+                onChange={(e) =>
+                  updatePlayer(player.id, (p) => ({
+                    ...p,
+                    companionExperiences: (p.companionExperiences ?? []).map((x, i) => (i === idx ? { ...x, modifier: parseInt(e.target.value, 10) || 0 } : x)),
+                  }))
+                }
+                disabled={!canEdit}
+                className="w-16 border border-stone-300 rounded-md px-2 py-1.5 text-sm text-center"
+              />
+              {canEdit && (
+                <button
+                  onClick={() => updatePlayer(player.id, (p) => ({ ...p, companionExperiences: (p.companionExperiences ?? []).filter((_, i) => i !== idx) }))}
+                  className="text-xs text-red-600 hover:underline shrink-0"
+                >
+                  Remover
+                </button>
+              )}
+            </div>
+          ))}
+          {experiences.length === 0 && <p className="text-xs text-stone-400">Nenhuma ainda — crie 2 começando em +2 na criação do companheiro.</p>}
+          {canEdit && (
+            <button
+              onClick={() => updatePlayer(player.id, (p) => ({ ...p, companionExperiences: [...(p.companionExperiences ?? []), { name: '', modifier: 2 }] }))}
+              className="text-xs font-medium text-violet-700 hover:underline"
+            >
+              + Experiência do companheiro
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-stone-600 mb-1">Evoluções escolhidas ({advancements.length})</p>
+        <div className="space-y-1 mb-2">
+          {advancements.map((a, idx) => {
+            const option = companionOptions.find((o) => o.id === a.optionId);
+            return (
+              <div key={idx} className="flex items-start justify-between gap-2 bg-stone-50 border border-stone-200 rounded-md px-2 py-1.5">
+                <div>
+                  <p className="text-xs font-semibold text-stone-800">
+                    Nível {a.level} — {option?.name ?? a.optionId}
+                  </p>
+                  {option?.description && <p className="text-xs text-stone-500">{option.description}</p>}
+                  {a.detail && <p className="text-xs text-stone-500 italic">{a.detail}</p>}
+                </div>
+                {canEdit && (
+                  <button onClick={() => handleRemoveAdvancement(idx)} className="text-xs text-red-600 hover:underline shrink-0">
+                    Remover
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {advancements.length === 0 && <p className="text-xs text-stone-400">Nenhuma evolução registrada ainda.</p>}
+        </div>
+        {canEdit && (
+          <details className="text-xs">
+            <summary className="cursor-pointer font-semibold text-stone-600">Registrar evolução</summary>
+            <div className="mt-2 space-y-1.5 bg-stone-50 border border-stone-200 rounded-lg p-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[11px] text-stone-500 shrink-0">Nível do personagem</label>
+                <input
+                  type="number"
+                  min={2}
+                  max={10}
+                  value={newLevel}
+                  onChange={(e) => setNewLevel(Math.max(2, Math.min(10, parseInt(e.target.value, 10) || 2)))}
+                  className="w-16 border border-stone-300 rounded-md px-2 py-1 text-sm"
+                />
+              </div>
+              <select value={newOptionId} onChange={(e) => setNewOptionId(e.target.value)} className={SELECT_CLASS}>
+                <option value="">Escolher opção...</option>
+                {companionOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                value={newDetail}
+                onChange={(e) => setNewDetail(e.target.value)}
+                placeholder="Detalhe (opcional) — ex: qual Experiência, dado ou alcance"
+                className="w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm"
+                rows={2}
+              />
+              <SmallButtonInline onClick={handleAddAdvancement}>Registrar</SmallButtonInline>
+            </div>
+          </details>
+        )}
+      </div>
     </Section>
   );
 }
