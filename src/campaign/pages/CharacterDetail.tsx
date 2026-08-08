@@ -154,6 +154,8 @@ export function CharacterDetail() {
   const armorOptions = rules.armors.filter((a) => a.tier <= tier);
   const selectedPrimary = rules.weapons.find((w) => w.id === player.primaryWeaponId);
   const selectedSecondary = rules.weapons.find((w) => w.id === player.secondaryWeaponId);
+  const ignoresBurden = selectedClass?.classFeatures.some((f) => /ignore burden/i.test(f.text)) ?? false;
+  const secondaryLockedByBurden = selectedPrimary?.burden === 'Two-Handed' && !ignoresBurden;
   const selectedArmor = rules.armors.find((a) => a.id === player.armorId);
   const plainAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
   const mixedFirstAncestry = rules.ancestries.find((a) => a.id === player.mixedAncestryFirstId);
@@ -679,14 +681,23 @@ export function CharacterDetail() {
             <label className="text-xs font-medium text-stone-600">Arma primária</label>
             <select
               value={player.primaryWeaponId ?? ''}
-              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, primaryWeaponId: e.target.value || undefined }))}
+              onChange={(e) => {
+                const newId = e.target.value || undefined;
+                const newWeapon = rules.weapons.find((w) => w.id === newId);
+                const locksSecondary = newWeapon?.burden === 'Two-Handed' && !ignoresBurden;
+                updatePlayer(player.id, (p) => ({
+                  ...p,
+                  primaryWeaponId: newId,
+                  secondaryWeaponId: locksSecondary ? undefined : p.secondaryWeaponId,
+                }));
+              }}
               disabled={!canEdit}
               className={SELECT_CLASS}
             >
               <option value="">Escolher...</option>
               {primaryWeapons.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage})
+                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage}, {w.burden})
                 </option>
               ))}
             </select>
@@ -697,16 +708,21 @@ export function CharacterDetail() {
             <select
               value={player.secondaryWeaponId ?? ''}
               onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, secondaryWeaponId: e.target.value || undefined }))}
-              disabled={!canEdit}
+              disabled={!canEdit || secondaryLockedByBurden}
               className={SELECT_CLASS}
             >
               <option value="">Escolher...</option>
               {secondaryWeapons.map((w) => (
                 <option key={w.id} value={w.id}>
-                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage})
+                  {w.name} (Tier {w.tier}, {w.trait}, {w.range}, {w.damage}, {w.burden})
                 </option>
               ))}
             </select>
+            {secondaryLockedByBurden && (
+              <p className="text-xs text-amber-600 mt-1">
+                Travado: a arma primária é de duas mãos (Two-Handed), então não há mão livre para uma arma secundária.
+              </p>
+            )}
             {selectedSecondary?.feature && <p className="text-xs text-stone-500 mt-1">{selectedSecondary.feature}</p>}
           </div>
           <div>
