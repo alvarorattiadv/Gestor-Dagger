@@ -1401,11 +1401,15 @@ function AdvancementsSection({
   }
   const levels = [...byLevel.keys()].sort((a, b) => a - b);
 
+  const achievementAppliedForLevel = (player.appliedAchievementLevels ?? []).includes(newLevel);
+
   function handleApplyAchievement() {
+    if ((player.appliedAchievementLevels ?? []).includes(newLevel)) return;
     updatePlayer(player.id, (p) => ({
       ...p,
       proficiency: (p.proficiency ?? 1) + 1,
       experiences: [...(p.experiences ?? []), { name: '', modifier: 2 }],
+      appliedAchievementLevels: [...(p.appliedAchievementLevels ?? []), newLevel],
     }));
   }
 
@@ -1488,10 +1492,18 @@ function AdvancementsSection({
             {isAchievementLevel && (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-2 flex items-center justify-between gap-2">
                 <p className="text-[11px] text-amber-800">
-                  Ganho automático do nível {newLevel}: +1 Proficiência (atual {player.proficiency ?? 1} → {(player.proficiency ?? 1) + 1}) e uma Experiência nova. Não usa
-                  nenhuma das 2 escolhas abaixo.
+                  {achievementAppliedForLevel ? (
+                    <>Bônus automático do nível {newLevel} já aplicado (+1 Proficiência e +1 Experiência).</>
+                  ) : (
+                    <>
+                      Ganho automático do nível {newLevel}: +1 Proficiência (atual {player.proficiency ?? 1} → {(player.proficiency ?? 1) + 1}) e uma Experiência nova. Não usa
+                      nenhuma das 2 escolhas abaixo.
+                    </>
+                  )}
                 </p>
-                <SmallButtonInline onClick={handleApplyAchievement}>Aplicar</SmallButtonInline>
+                <SmallButtonInline onClick={handleApplyAchievement} disabled={achievementAppliedForLevel}>
+                  {achievementAppliedForLevel ? 'Aplicado' : 'Aplicar'}
+                </SmallButtonInline>
               </div>
             )}
 

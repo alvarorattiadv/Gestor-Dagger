@@ -151,6 +151,7 @@ function playerFromRow(row: any): Player {
     mixedAncestryFirstId: row.mixed_ancestry_first_id ?? undefined,
     mixedAncestrySecondId: row.mixed_ancestry_second_id ?? undefined,
     heritageName: row.heritage_name ?? '',
+    appliedAchievementLevels: row.applied_achievement_levels ?? [],
   };
 }
 
@@ -478,6 +479,7 @@ export async function dbUpsertPlayer(p: Player) {
     mixed_ancestry_first_id: p.mixedAncestryFirstId ?? null,
     mixed_ancestry_second_id: p.mixedAncestrySecondId ?? null,
     heritage_name: p.heritageName ?? '',
+    applied_achievement_levels: p.appliedAchievementLevels ?? [],
   });
   if (error) logSyncError('upsert player', error);
 }

@@ -180,6 +180,7 @@ export interface Player {
   mixedAncestryFirstId?: string;
   mixedAncestrySecondId?: string;
   heritageName?: string;
+  appliedAchievementLevels?: number[];
 }
 
 export interface Experience {
