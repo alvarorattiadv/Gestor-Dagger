@@ -91,10 +91,13 @@ export interface ThresholdBreakdown {
   total: number;
 }
 
+/** Every class starts with 6 Stress (a universal base, unlike Hit Points which vary by class). */
+const STRESS_BASE = 6;
+
 export interface DerivedStats {
   evasion: { base: number; armor: number; ancestry: number; subclass: number; advancements: number; manual: number; total: number };
   hitPoints: { base: number; ancestry: number; advancements: number; manual: number; total: number };
-  stressSlots: { ancestry: number; advancements: number; manual: number; total: number };
+  stressSlots: { base: number; ancestry: number; advancements: number; manual: number; total: number };
   majorThreshold: ThresholdBreakdown;
   severeThreshold: ThresholdBreakdown;
   armorScore: number;
@@ -261,7 +264,13 @@ export function deriveCharacterStats(
       total: evasionBase + evasionArmor + evasionAncestry + evasionSubclass + evasionAdvancements + evasionManual,
     },
     hitPoints: { base: hpBase, ancestry: hpAncestry, advancements: hpAdvancements, manual: hpManual, total: hpBase + hpAncestry + hpAdvancements + hpManual },
-    stressSlots: { ancestry: stressAncestry, advancements: stressAdvancements, manual: stressManual, total: stressAncestry + stressAdvancements + stressManual },
+    stressSlots: {
+      base: STRESS_BASE,
+      ancestry: stressAncestry,
+      advancements: stressAdvancements,
+      manual: stressManual,
+      total: STRESS_BASE + stressAncestry + stressAdvancements + stressManual,
+    },
     majorThreshold,
     severeThreshold,
     armorScore,

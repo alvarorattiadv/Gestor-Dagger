@@ -263,8 +263,8 @@ export function CharacterDetail() {
                 {fmtSigned(stats.hitPoints.manual)} (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
-                Stress = {fmtSigned(stats.stressSlots.ancestry)} (ancestralidade) {fmtSigned(stats.stressSlots.advancements)} (avanços) {fmtSigned(stats.stressSlots.manual)}{' '}
-                (manual)
+                Stress = {stats.stressSlots.base} (base) {fmtSigned(stats.stressSlots.ancestry)} (ancestralidade) {fmtSigned(stats.stressSlots.advancements)} (avanços){' '}
+                {fmtSigned(stats.stressSlots.manual)} (manual)
               </p>
               <p className="font-semibold text-stone-700 mt-1">
                 Limiar Maior = {stats.majorThreshold.base} (base) {fmtSigned(stats.majorThreshold.level)} (nível) {fmtSigned(stats.majorThreshold.autoBonus)} (subclasse /
