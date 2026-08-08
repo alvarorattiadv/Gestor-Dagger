@@ -147,6 +147,10 @@ function playerFromRow(row: any): Player {
     companionRange: row.companion_range ?? 'Melee',
     companionExperiences: row.companion_experiences ?? [],
     companionAdvancements: row.companion_advancements ?? [],
+    isMixedAncestry: row.is_mixed_ancestry ?? false,
+    mixedAncestryFirstId: row.mixed_ancestry_first_id ?? undefined,
+    mixedAncestrySecondId: row.mixed_ancestry_second_id ?? undefined,
+    heritageName: row.heritage_name ?? '',
   };
 }
 
@@ -470,6 +474,10 @@ export async function dbUpsertPlayer(p: Player) {
     companion_range: p.companionRange ?? 'Melee',
     companion_experiences: p.companionExperiences ?? [],
     companion_advancements: p.companionAdvancements ?? [],
+    is_mixed_ancestry: p.isMixedAncestry ?? false,
+    mixed_ancestry_first_id: p.mixedAncestryFirstId ?? null,
+    mixed_ancestry_second_id: p.mixedAncestrySecondId ?? null,
+    heritage_name: p.heritageName ?? '',
   });
   if (error) logSyncError('upsert player', error);
 }

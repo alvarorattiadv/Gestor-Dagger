@@ -176,6 +176,10 @@ export interface Player {
   companionRange?: string;
   companionExperiences?: Experience[];
   companionAdvancements?: CompanionAdvancement[];
+  isMixedAncestry?: boolean;
+  mixedAncestryFirstId?: string;
+  mixedAncestrySecondId?: string;
+  heritageName?: string;
 }
 
 export interface Experience {

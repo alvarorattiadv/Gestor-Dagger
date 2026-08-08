@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useCampaignStore } from '../store';
 import { useRoleStore } from '../role';
 import { useRulesStore, MAX_LOADOUT_CARDS } from '../rulesStore';
-import type { AdvancementOption, BeastformOption, CharacterAdvancement, CompanionOption, FeatureText } from '../rulesTypes';
+import type { AdvancementOption, Ancestry, BeastformOption, CharacterAdvancement, CompanionOption, FeatureText } from '../rulesTypes';
 import { GENERAL_FIELD_DISABLED_CLASS } from '../components/PlayerNotesField';
 import { deriveCharacterStats, tierForLevel } from '../deriveStats';
 import type { Player } from '../types';
@@ -155,7 +155,20 @@ export function CharacterDetail() {
   const selectedPrimary = rules.weapons.find((w) => w.id === player.primaryWeaponId);
   const selectedSecondary = rules.weapons.find((w) => w.id === player.secondaryWeaponId);
   const selectedArmor = rules.armors.find((a) => a.id === player.armorId);
-  const selectedAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
+  const plainAncestry = rules.ancestries.find((a) => a.id === player.ancestryId);
+  const mixedFirstAncestry = rules.ancestries.find((a) => a.id === player.mixedAncestryFirstId);
+  const mixedSecondAncestry = rules.ancestries.find((a) => a.id === player.mixedAncestrySecondId);
+  const selectedAncestry: Ancestry | undefined =
+    player.isMixedAncestry && mixedFirstAncestry && mixedSecondAncestry
+      ? {
+          id: 'mixed',
+          name: player.heritageName || `${mixedFirstAncestry.name}-${mixedSecondAncestry.name}`,
+          description: `Ancestralidade mista: ${mixedFirstAncestry.name} + ${mixedSecondAncestry.name}`,
+          features: [mixedFirstAncestry.features[0], mixedSecondAncestry.features[1]].filter(
+            (f): f is FeatureText => !!f
+          ),
+        }
+      : plainAncestry;
   const selectedCommunity = rules.communities.find((c) => c.id === player.communityId);
   const hasBareBones = myCards.some((c) => c.name === 'BARE BONES');
   const stats = deriveCharacterStats(player, selectedClass, selectedArmor, selectedAncestry, selectedSubclass, hasBareBones, myAdvancements, selectedMulticlassSubclass);
@@ -393,19 +406,86 @@ export function CharacterDetail() {
 
       {/* Ancestralidade */}
       <Section title="Ancestralidade">
-        <select
-          value={player.ancestryId ?? ''}
-          onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryId: e.target.value || undefined }))}
-          disabled={!canEdit}
-          className={SELECT_CLASS}
-        >
-          <option value="">Escolher...</option>
-          {rules.ancestries.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
+        <label className="flex items-center gap-2 text-xs text-stone-600 mb-2">
+          <input
+            type="checkbox"
+            checked={player.isMixedAncestry ?? false}
+            disabled={!canEdit}
+            onChange={(e) =>
+              updatePlayer(player.id, (p) => ({
+                ...p,
+                isMixedAncestry: e.target.checked,
+                ancestryId: e.target.checked ? undefined : p.ancestryId,
+              }))
+            }
+          />
+          Ancestralidade mista (mixed ancestry)
+        </label>
+
+        {!player.isMixedAncestry ? (
+          <select
+            value={player.ancestryId ?? ''}
+            onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, ancestryId: e.target.value || undefined }))}
+            disabled={!canEdit}
+            className={SELECT_CLASS}
+          >
+            <option value="">Escolher...</option>
+            {rules.ancestries.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div className="space-y-2">
+            <input
+              value={player.heritageName ?? ''}
+              onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, heritageName: e.target.value }))}
+              disabled={!canEdit}
+              placeholder="Nome da linhagem (ex: toothling)"
+              className={`w-full border border-stone-300 rounded-md px-2 py-1.5 text-sm ${GENERAL_FIELD_DISABLED_CLASS}`}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-stone-500">1ª ancestralidade (dá a 1ª feature)</label>
+                <select
+                  value={player.mixedAncestryFirstId ?? ''}
+                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, mixedAncestryFirstId: e.target.value || undefined }))}
+                  disabled={!canEdit}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Escolher...</option>
+                  {rules.ancestries
+                    .filter((a) => a.id !== player.mixedAncestrySecondId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-stone-500">2ª ancestralidade (dá a 2ª feature)</label>
+                <select
+                  value={player.mixedAncestrySecondId ?? ''}
+                  onChange={(e) => updatePlayer(player.id, (p) => ({ ...p, mixedAncestrySecondId: e.target.value || undefined }))}
+                  disabled={!canEdit}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Escolher...</option>
+                  {rules.ancestries
+                    .filter((a) => a.id !== player.mixedAncestryFirstId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
         {selectedAncestry && (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-stone-500">{selectedAncestry.description}</p>
